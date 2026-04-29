@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Turista Tours — Lisbon & Sintra</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f5f1eb;
+            color: #2d2d2d;
+        }
+        header {
+            background: #1a5632;
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header h1 { font-size: 1.5rem; font-weight: 600; }
+        header nav a { color: rgba(255,255,255,0.85); text-decoration: none; margin-left: 24px; font-size: 0.95rem; }
+        header nav a:hover { color: white; }
+        .hero {
+            background: linear-gradient(135deg, #1a5632 0%, #2d8a56 100%);
+            color: white;
+            text-align: center;
+            padding: 80px 20px;
+        }
+        .hero h2 { font-size: 2.5rem; margin-bottom: 16px; font-weight: 700; }
+        .hero p { font-size: 1.15rem; opacity: 0.9; max-width: 600px; margin: 0 auto 32px; line-height: 1.6; }
+        .tours {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .tours h3 { font-size: 1.4rem; margin-bottom: 24px; color: #1a5632; }
+        .tour-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .tour-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid #1a5632;
+        }
+        .tour-card h4 { font-size: 1.05rem; margin-bottom: 8px; color: #1a5632; }
+        .tour-card p { font-size: 0.9rem; color: #666; line-height: 1.5; }
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+            font-size: 0.85rem;
+        }
+        .demo-banner {
+            background: #fff3cd;
+            color: #856404;
+            text-align: center;
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-banner">
+        Demo page — the chat widget is in the bottom-right corner. Click to start a conversation.
+    </div>
+    <header>
+        <h1>O Turista Tours</h1>
+        <nav>
+            <a href="#">Tours</a>
+            <a href="#">About</a>
+            <a href="#">Contact</a>
+        </nav>
+    </header>
+    <div class="hero">
+        <h2>Discover Lisbon & Sintra</h2>
+        <p>Private tours, small groups, and unforgettable experiences. Mercedes fleet, licensed guides, and the best pasteis de nata stops in the city.</p>
+    </div>
+    <div class="tours">
+        <h3>Popular Tours</h3>
+        <div class="tour-grid">
+            <div class="tour-card">
+                <h4>Private Half-Day Lisbon Tour</h4>
+                <p>Explore Belem, Alfama & enjoy a Pastel de Nata tasting. 4 hours with a private Mercedes and licensed guide.</p>
+            </div>
+            <div class="tour-card">
+                <h4>Sintra & Cascais Day Tour</h4>
+                <p>Small group tour to Pena Palace, Regaleira, and Cabo da Roca. Full day with lunch stop included.</p>
+            </div>
+            <div class="tour-card">
+                <h4>Arrabida & Sesimbra Private Trip</h4>
+                <p>Wine tasting, secret beaches, and stunning coastal scenery. A hidden gem south of Lisbon.</p>
+            </div>
+        </div>
+    </div>
+    <footer>
+        &copy; 2026 O Turista Tours — Lisbon, Portugal
+    </footer>
+    <script src="/widget.js?op=oturista" async></script>
+</body>
+</html>

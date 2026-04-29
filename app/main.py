@@ -139,6 +139,13 @@ async def booking_cancelled(request: Request):
     })
 
 
+# ── Demo page ─────────────────────────────────────────────────────────────────
+
+@app.get("/demo")
+async def demo(request: Request):
+    return TEMPLATES.TemplateResponse("demo.html", {"request": request})
+
+
 # ── Privacy policy ────────────────────────────────────────────────────────────
 
 @app.get("/privacy")
