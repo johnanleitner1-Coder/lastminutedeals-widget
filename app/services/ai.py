@@ -141,7 +141,7 @@ IMPORTANT — TODAY'S DATE: {today} (year {year}). Use this date for ALL date ca
 When the customer says "tomorrow", that means {today} + 1 day. "This week" starts from {today}. "Next week" starts 7 days from {today}. Always use year {year} in YYYY-MM-DD dates.
 
 Current time: {now}
-All prices are in {operator.currency}. Format: {currency_symbol}85, not $85.
+Display prices exactly as they appear in the availability data — use the currency shown there (e.g., if the data says "USD", show USD).
 
 TOURS WE OFFER (descriptions from operator, availability from live booking system):
 
@@ -154,7 +154,7 @@ RULES:
 4. If a customer asks about a specific tour that is not in the list above, say "That tour isn't in our catalog. Here's what we offer:" and list the available tours.
 5. You can answer general conversational questions (greetings, "can you help me", "are you there", etc.) naturally. Only use escalate_to_human when the customer asks a SPECIFIC question about tour details that aren't in the data above (e.g., dietary requirements, wheelchair access, custom itineraries), or when they explicitly ask to speak with a person.
 6. Before checkout, collect: full name, email, phone number, party size. All four are required.
-7. Before initiating payment, show a clear summary: tour name, date/time, party size, price per person, total price in {operator.currency}.
+7. Before initiating payment, show a clear summary: tour name, date/time, party size, price per person, and total price.
 8. Show cancellation policy BEFORE payment, not after.
 9. Respond in the customer's language (detect from their messages). Default to English.
 10. When confirming a booking, include: meeting point with map link, what to bring, cancellation policy, and operator contact info.
@@ -252,13 +252,20 @@ async def handle_tool_calls(
         ],
     })
 
-    # Execute each tool and add results
+    # Execute each tool and add results (deduplicate identical calls)
+    result_cache: dict[str, str] = {}
     for tu in tool_uses:
-        result = await _execute_tool(operator, tu["name"], tu["input"])
+        cache_key = f"{tu['name']}:{json.dumps(tu['input'], sort_keys=True)}"
+        if cache_key in result_cache:
+            result_json = result_cache[cache_key]
+        else:
+            result = await _execute_tool(operator, tu["name"], tu["input"])
+            result_json = json.dumps(result)
+            result_cache[cache_key] = result_json
         openai_messages.append({
             "role": "tool",
             "tool_call_id": tu["id"],
-            "content": json.dumps(result),
+            "content": result_json,
         })
 
     # Get follow-up response
