@@ -123,7 +123,10 @@ TOOLS = [
 
 
 def build_system_prompt(operator: OperatorConfig, product_context: str) -> str:
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.strftime("%Y-%m-%d %H:%M UTC")
+    today = now_dt.strftime("%Y-%m-%d")
+    year = now_dt.year
     currency_symbol = operator.currency_symbol
 
     escalation_info = ""
@@ -133,6 +136,10 @@ def build_system_prompt(operator: OperatorConfig, product_context: str) -> str:
         escalation_info += f"\nWhatsApp: {operator.human_escalation.whatsapp}"
 
     return f"""You are the AI booking assistant for {operator.display_name} in {operator.city}, {operator.country}.
+
+IMPORTANT — TODAY'S DATE: {today} (year {year}). Use this date for ALL date calculations.
+When the customer says "tomorrow", that means {today} + 1 day. "This week" starts from {today}. "Next week" starts 7 days from {today}. Always use year {year} in YYYY-MM-DD dates.
+
 Current time: {now}
 All prices are in {operator.currency}. Format: {currency_symbol}85, not $85.
 
@@ -281,18 +288,34 @@ async def handle_tool_calls(
     }
 
 
+def _fix_date_year(date_str: str) -> str:
+    """Fix dates where the AI used the wrong year (common with smaller models)."""
+    today = datetime.now(timezone.utc)
+    try:
+        parsed = datetime.strptime(date_str, "%Y-%m-%d")
+        if parsed.year != today.year:
+            fixed = date_str[:4].replace(str(parsed.year), str(today.year))
+            corrected = f"{today.year}{date_str[4:]}"
+            print(f"[DATE FIX] {date_str} -> {corrected}")
+            return corrected
+    except ValueError:
+        pass
+    return date_str
+
+
 async def _execute_tool(operator: OperatorConfig, tool_name: str, tool_input: dict) -> dict:
     """Execute a single tool call and return the result."""
     if tool_name == "check_availability":
         try:
+            date = _fix_date_year(tool_input["date"])
             slots = get_availability_for_date(
                 operator=operator,
                 product_id=tool_input["product_id"],
                 option_id=tool_input["option_id"],
                 unit_id=tool_input["unit_id"],
                 quantity=tool_input["quantity"],
-                date_start=tool_input["date"],
-                date_end=tool_input["date"],
+                date_start=date,
+                date_end=date,
             )
             if not slots:
                 return {"available": False, "message": "No availability for this date.", "slots": []}
@@ -302,10 +325,12 @@ async def _execute_tool(operator: OperatorConfig, tool_name: str, tool_input: di
 
     elif tool_name == "search_availability":
         try:
+            date_start = _fix_date_year(tool_input["date_start"])
+            date_end = _fix_date_year(tool_input["date_end"])
             results = search_all_availability(
                 operator=operator,
-                date_start=tool_input["date_start"],
-                date_end=tool_input["date_end"],
+                date_start=date_start,
+                date_end=date_end,
                 quantity=tool_input.get("quantity", 1),
                 time_of_day=tool_input.get("time_of_day", ""),
             )
