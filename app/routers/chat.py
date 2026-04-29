@@ -33,24 +33,28 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     if not operator:
         return JSONResponse({"error": "Unknown operator"}, status_code=404)
 
-    # Get or create conversation
-    conv = await get_or_create_conversation(
-        operator_id=req.operator_id,
-        session_token=req.session_token,
-        channel="web",
-        referrer=request.headers.get("referer", ""),
-        user_agent=request.headers.get("user-agent", ""),
-    )
-    conversation_id = conv["id"]
+    # Get or create conversation — don't crash if Supabase is slow
+    conversation_id = None
+    messages = [{"role": "user", "content": req.message}]
+    conv = {}
+    try:
+        conv = await get_or_create_conversation(
+            operator_id=req.operator_id,
+            session_token=req.session_token,
+            channel="web",
+            referrer=request.headers.get("referer", ""),
+            user_agent=request.headers.get("user-agent", ""),
+        )
+        conversation_id = conv["id"]
+        await append_message(conversation_id, "user", req.message)
 
-    # Save user message
-    await append_message(conversation_id, "user", req.message)
-
-    # Build message history for AI
-    messages_raw = conv.get("messages", "[]")
-    if isinstance(messages_raw, str):
-        messages_raw = json.loads(messages_raw)
-    messages = messages_raw + [{"role": "user", "content": req.message}]
+        # Build message history from prior conversation
+        messages_raw = conv.get("messages", "[]")
+        if isinstance(messages_raw, str):
+            messages_raw = json.loads(messages_raw)
+        messages = messages_raw + [{"role": "user", "content": req.message}]
+    except Exception as e:
+        print(f"[CHAT] Conversation lookup failed (responding without history): {e}")
 
     # Build product context
     product_context = build_ai_product_context(operator)
@@ -85,14 +89,16 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     else:
         ai_text = ai_response["content"]
 
-    # Save AI response
-    await append_message(conversation_id, "assistant", ai_text)
-
-    # Update state based on actions
-    if checkout_data:
-        await update_conversation_state(conversation_id, "checkout")
-    elif escalation_data:
-        await update_conversation_state(conversation_id, "human_escalation")
+    # Save AI response (best-effort — don't crash if Supabase is slow)
+    if conversation_id:
+        try:
+            await append_message(conversation_id, "assistant", ai_text)
+            if checkout_data:
+                await update_conversation_state(conversation_id, "checkout")
+            elif escalation_data:
+                await update_conversation_state(conversation_id, "human_escalation")
+        except Exception as e:
+            print(f"[CHAT] Failed to save response to conversation: {e}")
 
     # Build response
     response = {
