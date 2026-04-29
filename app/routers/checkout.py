@@ -35,14 +35,20 @@ async def create_checkout(req: CheckoutRequest):
             date_start=req.start_time[:10] if req.start_time else "",
             date_end=req.start_time[:10] if req.start_time else "",
         )
-        # Find matching slot
+        # Find matching slot — match on start_time (availability_id can change between queries)
         matching = [s for s in slots if s["availability_id"] == req.availability_id]
+        if not matching and req.start_time:
+            # Fallback: match by start time (AI may hallucinate availability_id)
+            req_time = req.start_time[:16]  # Compare up to minutes
+            matching = [s for s in slots if s.get("start_time", "")[:16] == req_time]
         if not matching:
             return JSONResponse(
                 {"error": "This slot is no longer available. Please check other times."},
                 status_code=409,
             )
         slot = matching[0]
+        # Use the real availability_id from the fresh OCTO response
+        req.availability_id = slot["availability_id"]
     except Exception as e:
         return JSONResponse(
             {"error": f"Could not verify availability: {str(e)[:200]}"},
