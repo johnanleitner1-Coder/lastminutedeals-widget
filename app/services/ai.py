@@ -1,5 +1,5 @@
 """
-AI service — OpenAI GPT-4.1-nano with tool use for the booking assistant.
+AI service — OpenAI GPT-4.1-mini with tool use for the booking assistant.
 
 Anti-hallucination design: every factual claim comes from either the
 operator's product catalog or live OCTO availability data, both injected
@@ -188,7 +188,7 @@ async def chat(
             openai_messages.append({"role": role, "content": content})
 
     response = await client.chat.completions.create(
-        model="gpt-4.1-nano",
+        model="gpt-4.1-mini",
         max_tokens=1024,
         messages=openai_messages,
         tools=TOOLS,
@@ -269,7 +269,7 @@ async def handle_tool_calls(
 
     # Get follow-up response
     response = await client.chat.completions.create(
-        model="gpt-4.1-nano",
+        model="gpt-4.1-mini",
         max_tokens=1024,
         messages=openai_messages,
         tools=TOOLS,
