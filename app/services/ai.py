@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from openai import AsyncOpenAI
 
 from app.config import OPENAI_API_KEY, OperatorConfig
-from app.services.availability import build_ai_product_context, get_availability_for_date
+from app.services.availability import build_ai_product_context, get_availability_for_date, search_all_availability
 
 _client: AsyncOpenAI | None = None
 
@@ -44,6 +44,31 @@ TOOLS = [
                     "date": {"type": "string", "description": "Date to check in YYYY-MM-DD format"},
                 },
                 "required": ["product_id", "option_id", "unit_id", "quantity", "date"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_availability",
+            "description": (
+                "Search availability across ALL tours for a date range. Use this when the customer "
+                "asks general questions like 'what's available next week?' or 'anything on May 5th?' "
+                "This checks all tours in parallel and returns which ones have open slots."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "date_start": {"type": "string", "description": "Start date in YYYY-MM-DD format"},
+                    "date_end": {"type": "string", "description": "End date in YYYY-MM-DD format"},
+                    "quantity": {"type": "integer", "description": "Number of people", "minimum": 1, "maximum": 20, "default": 1},
+                    "time_of_day": {
+                        "type": "string",
+                        "enum": ["morning", "afternoon", "evening", ""],
+                        "description": "Optional time filter: morning (before noon), afternoon (noon-5pm), evening (after 5pm)",
+                    },
+                },
+                "required": ["date_start", "date_end"],
             },
         },
     },
@@ -118,7 +143,7 @@ TOURS WE OFFER (descriptions from operator, availability from live booking syste
 RULES:
 1. ONLY state facts that appear in the tour data above. Never invent descriptions, prices, or availability. ONLY list tours that appear in the data above — never add extra tours.
 2. When the customer asks "what tours do you offer" or "what tours do you have" (no date mentioned), list tours from the data above with a brief description.
-3. When the customer mentions a DATE (e.g., "what's available tomorrow", "tours on Saturday", "next Tuesday"), use check_availability to check live availability. You may need to check multiple tours — check the most relevant ones based on the conversation. Availability is real-time from the booking system, so always check rather than guessing.
+3. When the customer mentions a DATE (e.g., "what's available tomorrow", "tours on Saturday", "next week"), use search_availability to check ALL tours at once for that date range. Use check_availability only when checking a SPECIFIC tour the customer already picked. Availability is real-time from the booking system — always check, never guess.
 4. If a customer asks about a specific tour that is not in the list above, say "That tour isn't in our catalog. Here's what we offer:" and list the available tours.
 5. You can answer general conversational questions (greetings, "can you help me", "are you there", etc.) naturally. Only use escalate_to_human when the customer asks a SPECIFIC question about tour details that aren't in the data above (e.g., dietary requirements, wheelchair access, custom itineraries), or when they explicitly ask to speak with a person.
 6. Before checkout, collect: full name, email, phone number, party size. All four are required.
@@ -274,6 +299,26 @@ async def _execute_tool(operator: OperatorConfig, tool_name: str, tool_input: di
             return {"available": True, "slots": slots}
         except Exception as e:
             return {"error": f"Could not check availability: {str(e)[:200]}"}
+
+    elif tool_name == "search_availability":
+        try:
+            results = search_all_availability(
+                operator=operator,
+                date_start=tool_input["date_start"],
+                date_end=tool_input["date_end"],
+                quantity=tool_input.get("quantity", 1),
+                time_of_day=tool_input.get("time_of_day", ""),
+            )
+            tours_with_slots = [r for r in results if r["slots"]]
+            tours_without = [r["tour"] for r in results if not r["slots"]]
+            return {
+                "available_tours": tours_with_slots,
+                "unavailable_tours": tours_without,
+                "date_range": f"{tool_input['date_start']} to {tool_input['date_end']}",
+                "total_checked": len(results),
+            }
+        except Exception as e:
+            return {"error": f"Could not search availability: {str(e)[:200]}"}
 
     elif tool_name == "start_checkout":
         return {

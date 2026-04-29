@@ -9,6 +9,7 @@ The merged result is what the AI system prompt reads from.
 
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from app.config import OperatorConfig, load_product_catalog, BASE_DIR
@@ -171,6 +172,78 @@ def get_availability_for_date(
         })
 
     return result
+
+
+def search_all_availability(
+    operator: OperatorConfig,
+    date_start: str,
+    date_end: str,
+    quantity: int = 1,
+    time_of_day: str = "",
+) -> list[dict]:
+    """
+    Check availability across ALL operator tours for a date range, in parallel.
+    Returns a list of tours with their available slots.
+    time_of_day: optional filter — "morning", "afternoon", or "evening".
+    """
+    products = get_products_with_catalog(operator)
+
+    def _check_one(product: dict) -> dict:
+        if not product.get("unit_types"):
+            return {"tour": product["display_name"], "slots": []}
+        unit_id = product["unit_types"][0]["id"]
+        try:
+            slots = get_availability_for_date(
+                operator=operator,
+                product_id=product["octo_product_id"],
+                option_id=product["option_id"],
+                unit_id=unit_id,
+                quantity=quantity,
+                date_start=date_start,
+                date_end=date_end,
+            )
+        except Exception:
+            slots = []
+
+        # Filter by time of day if requested
+        if time_of_day and slots:
+            filtered = []
+            for s in slots:
+                start = s.get("start_time", "")
+                hour = -1
+                if "T" in start:
+                    try:
+                        hour = int(start.split("T")[1][:2])
+                    except (ValueError, IndexError):
+                        pass
+                if time_of_day == "morning" and 0 <= hour < 12:
+                    filtered.append(s)
+                elif time_of_day == "afternoon" and 12 <= hour < 17:
+                    filtered.append(s)
+                elif time_of_day == "evening" and 17 <= hour <= 23:
+                    filtered.append(s)
+                elif not time_of_day:
+                    filtered.append(s)
+            slots = filtered
+
+        return {
+            "tour": product["display_name"],
+            "product_id": product["octo_product_id"],
+            "option_id": product["option_id"],
+            "unit_id": unit_id,
+            "slots": slots[:5],  # cap at 5 slots per tour
+        }
+
+    # Check all products in parallel (max 6 threads to avoid hammering the API)
+    results = []
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futures = {pool.submit(_check_one, p): p for p in products}
+        for future in as_completed(futures):
+            results.append(future.result())
+
+    # Sort: tours with availability first
+    results.sort(key=lambda r: (0 if r["slots"] else 1, r["tour"]))
+    return results
 
 
 def build_ai_product_context(operator: OperatorConfig, availability_by_product: dict | None = None) -> str:
