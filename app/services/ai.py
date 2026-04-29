@@ -311,6 +311,9 @@ async def _execute_tool(operator: OperatorConfig, tool_name: str, tool_input: di
             )
             tours_with_slots = [r for r in results if r["slots"]]
             tours_without = [r["tour"] for r in results if not r["slots"]]
+            print(f"[TOOL] search_availability: {len(tours_with_slots)} available, {len(tours_without)} empty")
+            for t in tours_with_slots:
+                print(f"[TOOL]   {t['tour']}: {len(t['slots'])} slots")
             return {
                 "available_tours": tours_with_slots,
                 "unavailable_tours": tours_without,
@@ -318,6 +321,7 @@ async def _execute_tool(operator: OperatorConfig, tool_name: str, tool_input: di
                 "total_checked": len(results),
             }
         except Exception as e:
+            print(f"[TOOL] search_availability ERROR: {e}")
             return {"error": f"Could not search availability: {str(e)[:200]}"}
 
     elif tool_name == "start_checkout":

@@ -61,6 +61,10 @@ async def chat_endpoint(req: ChatRequest, request: Request):
 
     # Get AI response
     ai_response = await chat(operator, messages, product_context)
+    print(f"[CHAT] AI stop_reason={ai_response['stop_reason']}, tool_calls={len(ai_response['tool_use'])}, content_len={len(ai_response['content'])}")
+    if ai_response["tool_use"]:
+        for tu in ai_response["tool_use"]:
+            print(f"[CHAT] Tool call: {tu['name']}({json.dumps(tu['input'])[:200]})")
 
     # Handle tool calls if any
     checkout_data = None
@@ -78,6 +82,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
             operator, ai_response["tool_use"], messages, product_context
         )
         ai_text = followup["content"]
+        print(f"[CHAT] Followup: content_len={len(ai_text)}, more_tools={len(followup['tool_use'])}")
 
         # Check for additional tool calls in follow-up
         if followup["tool_use"]:
