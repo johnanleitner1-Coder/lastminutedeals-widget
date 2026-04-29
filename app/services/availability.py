@@ -293,10 +293,9 @@ def build_ai_product_context(operator: OperatorConfig, availability_by_product: 
                     price = s.get("price_per_unit")
                     currency = s.get("currency", operator.currency)
                     vacancies = s.get("vacancies")
-                    symbol = operator.currency_symbol
                     line = f"  - {start}"
                     if price is not None:
-                        line += f" — {symbol}{price:.0f}/person"
+                        line += f" — {price:.0f} {currency}/person"
                     if vacancies is not None:
                         line += f" ({vacancies} spots left)"
                     lines.append(line)

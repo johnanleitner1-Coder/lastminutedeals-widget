@@ -127,7 +127,6 @@ def build_system_prompt(operator: OperatorConfig, product_context: str) -> str:
     now = now_dt.strftime("%Y-%m-%d %H:%M UTC")
     today = now_dt.strftime("%Y-%m-%d")
     year = now_dt.year
-    currency_symbol = operator.currency_symbol
 
     escalation_info = ""
     if operator.human_escalation.email:
@@ -301,7 +300,6 @@ def _fix_date_year(date_str: str) -> str:
     try:
         parsed = datetime.strptime(date_str, "%Y-%m-%d")
         if parsed.year != today.year:
-            fixed = date_str[:4].replace(str(parsed.year), str(today.year))
             corrected = f"{today.year}{date_str[4:]}"
             print(f"[DATE FIX] {date_str} -> {corrected}")
             return corrected
