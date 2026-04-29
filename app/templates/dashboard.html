@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ operator.display_name }} — Booking Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            color: #1f2937;
+            padding: 24px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+        h1 { font-size: 24px; color: #111827; }
+        .period-select {
+            padding: 8px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .stat-label { font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value { font-size: 32px; font-weight: 700; color: #111827; margin-top: 4px; }
+        .stat-sub { font-size: 13px; color: #9ca3af; margin-top: 4px; }
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .chart-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+        .channels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .channel-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .channel-name { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+        .channel-stat { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; }
+        .bookings-table {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 12px; color: #6b7280; text-transform: uppercase; padding: 12px 8px; border-bottom: 1px solid #e5e7eb; }
+        td { padding: 12px 8px; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-web { background: #dbeafe; color: #1e40af; }
+        .badge-whatsapp { background: #dcfce7; color: #166534; }
+        .loading { text-align: center; padding: 40px; color: #9ca3af; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ operator.display_name }}</h1>
+        <select class="period-select" id="period" onchange="loadData()">
+            <option value="7">Last 7 days</option>
+            <option value="30" selected>Last 30 days</option>
+            <option value="90">Last 90 days</option>
+        </select>
+    </div>
+
+    <div id="content">
+        <div class="loading">Loading dashboard...</div>
+    </div>
+
+    <script>
+    var API_BASE = "";
+    var OP = "{{ operator_id }}";
+    var TOKEN = "{{ token }}";
+
+    function loadData() {
+        var days = document.getElementById("period").value;
+        fetch(API_BASE + "/api/analytics?op=" + OP + "&token=" + TOKEN + "&days=" + days)
+            .then(function(r) { return r.json(); })
+            .then(render)
+            .catch(function(e) {
+                document.getElementById("content").innerHTML = '<div class="loading">Error loading data</div>';
+            });
+    }
+
+    function render(data) {
+        var sym = data.currency_symbol;
+        var html = '';
+
+        // Stat cards
+        html += '<div class="grid">';
+        html += statCard("Conversations", data.total_conversations, "Total chats started");
+        html += statCard("Bookings", data.total_bookings, data.conversion_rate + "% conversion rate");
+        html += statCard("Revenue", sym + data.total_revenue.toFixed(0), "Total attributed to widget");
+        html += statCard("Escalations", data.escalation_rate + "%", "Handed to human");
+        html += '</div>';
+
+        // Channel breakdown
+        html += '<div class="channels">';
+        html += channelCard("Website Widget", "web", data.channels.web);
+        html += channelCard("WhatsApp", "whatsapp", data.channels.whatsapp);
+        html += '</div>';
+
+        // Recent bookings table
+        html += '<div class="bookings-table">';
+        html += '<div class="chart-title">Recent Bookings</div>';
+        if (data.recent_bookings.length === 0) {
+            html += '<p style="color:#9ca3af;padding:16px 0;">No bookings yet in this period.</p>';
+        } else {
+            html += '<table><thead><tr><th>Booking ID</th><th>Channel</th><th>Revenue</th><th>Date</th></tr></thead><tbody>';
+            data.recent_bookings.forEach(function(b) {
+                var badge = b.channel === "whatsapp" ? "badge-whatsapp" : "badge-web";
+                var label = b.channel === "whatsapp" ? "WhatsApp" : "Web";
+                var date = new Date(b.created_at).toLocaleDateString();
+                html += '<tr>';
+                html += '<td>' + b.booking_id + '</td>';
+                html += '<td><span class="badge ' + badge + '">' + label + '</span></td>';
+                html += '<td>' + sym + b.revenue.toFixed(0) + '</td>';
+                html += '<td>' + date + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+        }
+        html += '</div>';
+
+        document.getElementById("content").innerHTML = html;
+    }
+
+    function statCard(label, value, sub) {
+        return '<div class="stat-card"><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div><div class="stat-sub">' + sub + '</div></div>';
+    }
+
+    function channelCard(name, key, data) {
+        var convRate = data.conversations > 0 ? (data.bookings / data.conversations * 100).toFixed(1) : "0";
+        return '<div class="channel-card"><div class="channel-name">' + name + '</div>' +
+            '<div class="channel-stat"><span>Conversations</span><strong>' + data.conversations + '</strong></div>' +
+            '<div class="channel-stat"><span>Bookings</span><strong>' + data.bookings + '</strong></div>' +
+            '<div class="channel-stat"><span>Conversion</span><strong>' + convRate + '%</strong></div></div>';
+    }
+
+    loadData();
+    </script>
+</body>
+</html>
