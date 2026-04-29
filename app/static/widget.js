@@ -13,7 +13,7 @@
     var OPERATOR_ID = '__OPERATOR_ID__';
 
     // Extract operator from script tag query param if not injected
-    if (!OPERATOR_ID || OPERATOR_ID === '__OPERATOR_ID__') {
+    if (!OPERATOR_ID || OPERATOR_ID.indexOf('__') === 0) {
         var scripts = document.querySelectorAll('script[src*="widget.js"]');
         for (var i = 0; i < scripts.length; i++) {
             var src = scripts[i].getAttribute('src') || '';
@@ -21,7 +21,7 @@
             if (match) { OPERATOR_ID = match[1]; break; }
         }
     }
-    if (!API_URL || API_URL === '__WIDGET_API_URL__') {
+    if (!API_URL || API_URL.indexOf('__') === 0) {
         API_URL = 'https://widget.lastminutedealshq.com';
     }
 
