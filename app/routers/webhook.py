@@ -67,12 +67,15 @@ async def stripe_webhook(operator_id: str, request: Request):
         payment_intent = session.get("payment_intent", "")
         amount_total = session.get("amount_total", 0)
         session_token = metadata.get("session_token", "")
+        whatsapp_phone = metadata.get("whatsapp_phone", "")
 
-        # Look up conversation by session token
-        from app.services.conversation import get_conversation_status
+        # Look up conversation: by session_token (web) or phone number (WhatsApp)
+        from app.services.conversation import get_conversation_status, get_conversation_by_phone
         conv_status = None
         if session_token:
             conv_status = await get_conversation_status(session_token)
+        elif whatsapp_phone:
+            conv_status = await get_conversation_by_phone(operator_id, whatsapp_phone)
 
         conversation_id = conv_status["id"] if conv_status else None
 

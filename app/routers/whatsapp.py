@@ -28,7 +28,8 @@ from app.services.conversation import (
     update_conversation_state,
 )
 from app.services.ai import chat, handle_tool_calls
-from app.services.availability import build_ai_product_context
+from app.services.availability import build_ai_product_context, get_availability_for_date, get_products_with_catalog
+from app.services.payment import create_checkout_session
 from app.services.whatsapp_client import (
     send_text_message,
     send_interactive_buttons,
@@ -140,9 +141,6 @@ async def whatsapp_incoming(request: Request):
         # Send response via WhatsApp
         if checkout_data:
             # Create checkout and send link
-            from app.services.payment import create_checkout_session
-            from app.services.availability import get_availability_for_date, get_products_with_catalog
-
             products = get_products_with_catalog(operator)
             product_name = checkout_data.get("product_id", "Tour")
             for p in products:
@@ -176,6 +174,7 @@ async def whatsapp_incoming(request: Request):
                             "customer_name": checkout_data.get("customer_name", customer_name),
                             "customer_email": checkout_data.get("customer_email", ""),
                             "customer_phone": phone,
+                            "whatsapp_phone": phone,
                             "channel": "whatsapp",
                         },
                     )

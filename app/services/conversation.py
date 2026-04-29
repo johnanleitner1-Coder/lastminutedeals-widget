@@ -172,6 +172,25 @@ async def get_conversation_by_id(conversation_id: str) -> dict | None:
     return None
 
 
+async def get_conversation_by_phone(operator_id: str, whatsapp_phone: str) -> dict | None:
+    """Look up the most recent conversation by WhatsApp phone number."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{SUPABASE_URL}/rest/v1/widget_conversations",
+            headers=_headers(),
+            params={
+                "operator_id": f"eq.{operator_id}",
+                "whatsapp_phone": f"eq.{whatsapp_phone}",
+                "order": "updated_at.desc",
+                "select": "id,state,booking_id,converted",
+                "limit": "1",
+            },
+        )
+        if resp.is_success and resp.json():
+            return resp.json()[0]
+    return None
+
+
 async def get_conversation_status(session_token: str) -> dict | None:
     """Get conversation state for polling (widget checks this after payment)."""
     async with httpx.AsyncClient() as client:
