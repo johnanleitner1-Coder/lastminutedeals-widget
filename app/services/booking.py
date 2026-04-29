@@ -70,57 +70,46 @@ def _fulfill_booking(
     """Execute OCTO booking, capture payment, update conversation state."""
     import asyncio
 
-    booker = OCTOBooker(
-        base_url=operator.base_url,
-        api_key=operator.api_key,
-    )
-
-    result: BookingResult | None = None
-    try:
-        result = booker.book(
-            product_id=product_id,
-            option_id=option_id,
-            availability_id=availability_id,
-            unit_id=unit_id,
-            quantity=quantity,
-            customer_name=customer_name,
-            customer_email=customer_email,
-            customer_phone=customer_phone,
-            customer_country=operator.country,
-            start_time=start_time,
+    async def _async_fulfill():
+        booker = OCTOBooker(
+            base_url=operator.base_url,
+            api_key=operator.api_key,
         )
 
-        # OCTO booking succeeded — capture the payment
-        if payment_intent_id:
-            captured = capture_payment(payment_intent_id)
-            if not captured:
-                # Payment capture failed — cancel the OCTO booking
-                print(f"[BOOKING] Capture failed — would cancel OCTO booking {result.confirmation}")
-                # In production: call DELETE /bookings/{uuid} to release
-                cancel_payment(payment_intent_id)
+        try:
+            result = booker.book(
+                product_id=product_id,
+                option_id=option_id,
+                availability_id=availability_id,
+                unit_id=unit_id,
+                quantity=quantity,
+                customer_name=customer_name,
+                customer_email=customer_email,
+                customer_phone=customer_phone,
+                customer_country=operator.country,
+                start_time=start_time,
+            )
 
-                loop = asyncio.new_event_loop()
-                loop.run_until_complete(
-                    update_conversation_state(
+            # OCTO booking succeeded — capture the payment
+            if payment_intent_id:
+                captured = capture_payment(payment_intent_id)
+                if not captured:
+                    print(f"[BOOKING] Capture failed — would cancel OCTO booking {result.confirmation}")
+                    cancel_payment(payment_intent_id)
+                    await update_conversation_state(
                         conversation_id, "checkout",
                         context={"error": "Payment capture failed. You have been refunded."},
                     )
-                )
-                loop.close()
-                return
+                    return
 
-        # Success — update conversation
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(
-            update_conversation_state(
+            # Success — update conversation
+            await update_conversation_state(
                 conversation_id, "confirmed",
                 converted=True,
                 booking_id=result.confirmation,
                 revenue_cents=amount_cents,
             )
-        )
-        loop.run_until_complete(
-            record_event(
+            await record_event(
                 operator.operator_id, conversation_id, "booking_confirmed",
                 metadata={
                     "confirmation": result.confirmation,
@@ -129,42 +118,28 @@ def _fulfill_booking(
                     "product_id": product_id,
                 },
             )
-        )
-        loop.close()
+            print(f"[BOOKING] Confirmed: {result.confirmation} (ref: {result.supplier_reference})")
 
-        print(f"[BOOKING] Confirmed: {result.confirmation} (ref: {result.supplier_reference})")
-
-    except BookingError as e:
-        print(f"[BOOKING] Failed: {e}")
-        # Cancel payment hold
-        if payment_intent_id:
-            cancel_payment(payment_intent_id)
-
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(
-            update_conversation_state(
+        except BookingError as e:
+            print(f"[BOOKING] Failed: {e}")
+            if payment_intent_id:
+                cancel_payment(payment_intent_id)
+            await update_conversation_state(
                 conversation_id, "checkout",
                 context={"error": f"Booking could not be completed: {str(e)[:200]}. You have been fully refunded."},
             )
-        )
-        loop.run_until_complete(
-            record_event(
+            await record_event(
                 operator.operator_id, conversation_id, "booking_failed",
                 metadata={"error": str(e)[:500]},
             )
-        )
-        loop.close()
 
-    except Exception as e:
-        print(f"[BOOKING] Unexpected error: {e}")
-        if payment_intent_id:
-            cancel_payment(payment_intent_id)
-
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(
-            update_conversation_state(
+        except Exception as e:
+            print(f"[BOOKING] Unexpected error: {e}")
+            if payment_intent_id:
+                cancel_payment(payment_intent_id)
+            await update_conversation_state(
                 conversation_id, "checkout",
                 context={"error": "An unexpected error occurred. You have been fully refunded."},
             )
-        )
-        loop.close()
+
+    asyncio.run(_async_fulfill())

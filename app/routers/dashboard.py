@@ -145,7 +145,7 @@ async def analytics_data(op: str = "", token: str = "", days: int = 30):
         total_escalations = int(esc_resp.headers.get("content-range", "0-0/0").split("/")[-1])
 
     conversion_rate = (total_bookings / total_conversations * 100) if total_conversations > 0 else 0
-    currency_symbol = "€" if operator.currency == "EUR" else "$"
+    currency_symbol = operator.currency_symbol
 
     return JSONResponse({
         "period_days": days,

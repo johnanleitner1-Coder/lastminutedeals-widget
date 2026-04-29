@@ -45,11 +45,11 @@ app = FastAPI(
 )
 
 # CORS — restrict to operator domains in production
-allowed_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+allowed_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in allowed_origins],
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials="*" not in allowed_origins,  # credentials + wildcard is invalid
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
@@ -69,16 +69,24 @@ async def rate_limit_middleware(request: Request, call_next):
         key = f"{client_ip}:{request.url.path}"
         now = time.time()
 
-        # Clean old entries
-        _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < _RATE_LIMIT_WINDOW]
+        # Clean old entries for this key
+        active = [t for t in _rate_limit_store[key] if now - t < _RATE_LIMIT_WINDOW]
 
         limit = _RATE_LIMIT_SESSION if request.url.path == "/api/session" else _RATE_LIMIT_CHAT
-        if len(_rate_limit_store[key]) >= limit:
+        if len(active) >= limit:
+            _rate_limit_store[key] = active
             return JSONResponse(
                 {"error": "Too many requests. Please wait a moment."},
                 status_code=429,
             )
-        _rate_limit_store[key].append(now)
+        active.append(now)
+        _rate_limit_store[key] = active
+
+        # Periodic cleanup: remove stale keys every ~100 requests
+        if len(_rate_limit_store) > 100:
+            stale_keys = [k for k, v in _rate_limit_store.items() if not v or now - v[-1] > _RATE_LIMIT_WINDOW]
+            for k in stale_keys:
+                del _rate_limit_store[k]
 
     return await call_next(request)
 

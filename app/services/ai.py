@@ -15,13 +15,13 @@ import anthropic
 from app.config import ANTHROPIC_API_KEY, OperatorConfig
 from app.services.availability import build_ai_product_context, get_availability_for_date
 
-_client: anthropic.Anthropic | None = None
+_client: anthropic.AsyncAnthropic | None = None
 
 
-def _get_client() -> anthropic.Anthropic:
+def _get_client() -> anthropic.AsyncAnthropic:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
     return _client
 
 
@@ -90,7 +90,7 @@ TOOLS = [
 
 def build_system_prompt(operator: OperatorConfig, product_context: str) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    currency_symbol = "€" if operator.currency == "EUR" else "$"
+    currency_symbol = operator.currency_symbol
 
     escalation_info = ""
     if operator.human_escalation.email:
@@ -146,7 +146,7 @@ async def chat(
         if role in ("user", "assistant"):
             anthropic_messages.append({"role": role, "content": content})
 
-    response = client.messages.create(
+    response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1024,
         system=system_prompt,
@@ -218,7 +218,7 @@ async def handle_tool_calls(
     anthropic_messages.append({"role": "user", "content": tool_results})
 
     # Get follow-up response
-    response = client.messages.create(
+    response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1024,
         system=system_prompt,

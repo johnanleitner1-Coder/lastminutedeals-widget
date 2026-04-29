@@ -99,7 +99,7 @@ async def create_checkout(req: CheckoutRequest):
         },
     )
 
-    currency_symbol = "€" if operator.currency == "EUR" else "$"
+    currency_symbol = operator.currency_symbol
     return JSONResponse({
         "checkout_url": result["checkout_url"],
         "session_id": result["session_id"],

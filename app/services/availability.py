@@ -38,11 +38,8 @@ def get_products_with_catalog(operator: OperatorConfig) -> list[dict]:
     if cache and (time.time() - cache["fetched_at"]) < _CACHE_TTL:
         return cache["merged"]
 
-    client = _get_client(operator)
-    try:
+    with _get_client(operator) as client:
         octo_products = client.get_products(vendor_id=operator.bokun_vendor_id)
-    finally:
-        client.close()
 
     catalog = load_product_catalog(operator)
     catalog_by_id = {p["octo_product_id"]: p for p in catalog if p.get("octo_product_id")}
@@ -127,8 +124,7 @@ def get_availability_for_date(
     Fetch live availability for a specific product and date range.
     Returns availability slots with pricing.
     """
-    client = _get_client(operator)
-    try:
+    with _get_client(operator) as client:
         slots = client.get_availability(
             product_id=product_id,
             option_id=option_id,
@@ -137,8 +133,6 @@ def get_availability_for_date(
             date_end=date_end,
             vendor_id=operator.bokun_vendor_id,
         )
-    finally:
-        client.close()
 
     result = []
     for slot in slots:
@@ -225,7 +219,7 @@ def build_ai_product_context(operator: OperatorConfig, availability_by_product: 
                     price = s.get("price_per_unit")
                     currency = s.get("currency", operator.currency)
                     vacancies = s.get("vacancies")
-                    symbol = "€" if currency == "EUR" else "$"
+                    symbol = operator.currency_symbol
                     line = f"  - {start}"
                     if price is not None:
                         line += f" — {symbol}{price:.0f}/person"

@@ -6,7 +6,6 @@ Uses manual capture: authorization hold first, capture only after OCTO booking c
 """
 
 import os
-import uuid as _uuid
 
 import stripe
 

@@ -116,7 +116,7 @@
     </div>
     <script>
         (function() {
-            var sessionId = "{{ session_id }}";
+            var sessionId = {{ session_id | tojson }};
             if (!sessionId) {
                 document.getElementById("error").style.display = "block";
                 return;

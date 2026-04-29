@@ -53,6 +53,10 @@ class OperatorConfig:
     def api_key(self) -> str:
         return os.getenv("BOKUN_API_KEY", "")
 
+    @property
+    def currency_symbol(self) -> str:
+        return "€" if self.currency == "EUR" else "$"
+
 
 # ── Operator Registry ────────────────────────────────────────────────────────
 
@@ -108,7 +112,10 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 WIDGET_BASE_URL = os.getenv("WIDGET_BASE_URL", "https://widget.lastminutedealshq.com")
-DASHBOARD_HMAC_SECRET = os.getenv("DASHBOARD_HMAC_SECRET", "change-me")
+DASHBOARD_HMAC_SECRET = os.getenv("DASHBOARD_HMAC_SECRET", "")
+if not DASHBOARD_HMAC_SECRET:
+    print("[WARNING] DASHBOARD_HMAC_SECRET not set — dashboard will be inaccessible")
+    DASHBOARD_HMAC_SECRET = "unset-generate-a-random-secret"
 
 # WhatsApp (Meta Cloud API)
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")

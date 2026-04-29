@@ -6,6 +6,7 @@ Idempotency enforced via in-memory lock + Supabase record.
 """
 
 import threading
+import time
 from datetime import datetime, timezone
 
 import stripe
@@ -21,8 +22,10 @@ router = APIRouter()
 stripe.api_key = STRIPE_SECRET_KEY
 
 # In-memory idempotency: prevent concurrent duplicate processing
+# Stores {session_id: timestamp} with TTL-based cleanup
 _webhook_lock = threading.Lock()
-_webhook_in_flight: dict[str, bool] = {}
+_webhook_in_flight: dict[str, float] = {}
+_WEBHOOK_TTL = 600  # 10 minutes
 
 
 @router.post("/api/stripe-webhook")
@@ -44,11 +47,17 @@ async def stripe_webhook(request: Request):
         session_id = session.get("id", "")
         metadata = session.get("metadata", {})
 
-        # Idempotency check
+        # Idempotency check with TTL cleanup
         with _webhook_lock:
-            if _webhook_in_flight.get(session_id):
+            now = time.time()
+            # Clean up stale entries
+            stale = [k for k, t in _webhook_in_flight.items() if now - t > _WEBHOOK_TTL]
+            for k in stale:
+                del _webhook_in_flight[k]
+
+            if session_id in _webhook_in_flight:
                 return JSONResponse({"status": "ok", "note": "already_processing"})
-            _webhook_in_flight[session_id] = True
+            _webhook_in_flight[session_id] = now
 
         operator_id = metadata.get("operator_id", "")
         operator = get_operator(operator_id)

@@ -101,8 +101,8 @@
 
     <script>
     var API_BASE = "";
-    var OP = "{{ operator_id }}";
-    var TOKEN = "{{ token }}";
+    var OP = {{ operator_id | tojson }};
+    var TOKEN = {{ token | tojson }};
 
     function loadData() {
         var days = document.getElementById("period").value;

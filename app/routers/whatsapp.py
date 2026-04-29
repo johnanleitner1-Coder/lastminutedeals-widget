@@ -10,12 +10,18 @@ Same AI pipeline as the web widget, different transport:
   - Payment links sent as WhatsApp messages
 """
 
+import hashlib
+import hmac
 import json
+import os
 
 from fastapi import APIRouter, Request, Query
 from fastapi.responses import PlainTextResponse, JSONResponse
 
 from app.config import WHATSAPP_VERIFY_TOKEN, get_operator
+
+# Meta app secret for webhook signature verification
+_WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 from app.services.conversation import (
     get_or_create_conversation,
     append_message,
@@ -52,7 +58,18 @@ async def whatsapp_verify(
 @router.post("/api/whatsapp/webhook")
 async def whatsapp_incoming(request: Request):
     """Handle incoming WhatsApp messages."""
-    body = await request.json()
+    # Verify Meta webhook signature (X-Hub-Signature-256)
+    if _WHATSAPP_APP_SECRET:
+        raw_body = await request.body()
+        signature = request.headers.get("X-Hub-Signature-256", "")
+        expected = "sha256=" + hmac.new(
+            _WHATSAPP_APP_SECRET.encode(), raw_body, hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            return JSONResponse({"error": "Invalid signature"}, status_code=403)
+        body = json.loads(raw_body)
+    else:
+        body = await request.json()
 
     # Extract message from Meta's nested payload
     msg_data = extract_incoming_message(body)
@@ -164,7 +181,7 @@ async def whatsapp_incoming(request: Request):
                     )
                     # Send AI text first, then payment link
                     await send_text_message(phone, ai_text)
-                    symbol = "€" if operator.currency == "EUR" else "$"
+                    symbol = operator.currency_symbol
                     total = price * checkout_data["quantity"]
                     await send_link_message(
                         phone,

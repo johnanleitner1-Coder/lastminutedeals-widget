@@ -34,6 +34,12 @@ class OCTOClient:
     def close(self):
         self._client.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def get_products(self, vendor_id: int | None = None) -> list[dict]:
         """
         Fetch products — no pricing capability header (avoids Bokun timeout).
