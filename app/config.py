@@ -110,7 +110,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_SECRET_KEY", "")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 WIDGET_BASE_URL = os.getenv("WIDGET_BASE_URL", "https://widget.lastminutedealshq.com")
 DASHBOARD_HMAC_SECRET = os.getenv("DASHBOARD_HMAC_SECRET", "")
 if not DASHBOARD_HMAC_SECRET:

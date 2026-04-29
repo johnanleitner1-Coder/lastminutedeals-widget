@@ -1,5 +1,5 @@
 """
-AI service — Claude Haiku with tool use for the booking assistant.
+AI service — OpenAI GPT-4.1-nano with tool use for the booking assistant.
 
 Anti-hallucination design: every factual claim comes from either the
 operator's product catalog or live OCTO availability data, both injected
@@ -10,79 +10,88 @@ times, or descriptions from its own knowledge.
 import json
 from datetime import datetime, timezone
 
-import anthropic
+from openai import AsyncOpenAI
 
-from app.config import ANTHROPIC_API_KEY, OperatorConfig
+from app.config import OPENAI_API_KEY, OperatorConfig
 from app.services.availability import build_ai_product_context, get_availability_for_date
 
-_client: anthropic.AsyncAnthropic | None = None
+_client: AsyncOpenAI | None = None
 
 
-def _get_client() -> anthropic.AsyncAnthropic:
+def _get_client() -> AsyncOpenAI:
     global _client
     if _client is None:
-        _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        _client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     return _client
 
 
 TOOLS = [
     {
-        "name": "check_availability",
-        "description": (
-            "Check live availability for a specific tour on a specific date. "
-            "Call this when the customer asks about availability for a particular date."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "product_id": {"type": "string", "description": "OCTO product ID from the tour listing"},
-                "option_id": {"type": "string", "description": "OCTO option ID (usually DEFAULT)"},
-                "unit_id": {"type": "string", "description": "Unit type ID (e.g., adult)"},
-                "quantity": {"type": "integer", "description": "Number of people", "minimum": 1, "maximum": 20},
-                "date": {"type": "string", "description": "Date to check in YYYY-MM-DD format"},
+        "type": "function",
+        "function": {
+            "name": "check_availability",
+            "description": (
+                "Check live availability for a specific tour on a specific date. "
+                "Call this when the customer asks about availability for a particular date."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "product_id": {"type": "string", "description": "OCTO product ID from the tour listing"},
+                    "option_id": {"type": "string", "description": "OCTO option ID (usually DEFAULT)"},
+                    "unit_id": {"type": "string", "description": "Unit type ID (e.g., adult)"},
+                    "quantity": {"type": "integer", "description": "Number of people", "minimum": 1, "maximum": 20},
+                    "date": {"type": "string", "description": "Date to check in YYYY-MM-DD format"},
+                },
+                "required": ["product_id", "option_id", "unit_id", "quantity", "date"],
             },
-            "required": ["product_id", "option_id", "unit_id", "quantity", "date"],
         },
     },
     {
-        "name": "start_checkout",
-        "description": (
-            "Initiate payment checkout after the customer has confirmed all details. "
-            "Only call this after collecting: full name, email, phone, party size, "
-            "and the customer has confirmed the booking summary."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "product_id": {"type": "string"},
-                "option_id": {"type": "string"},
-                "availability_id": {"type": "string", "description": "Specific availability slot ID"},
-                "unit_id": {"type": "string"},
-                "quantity": {"type": "integer", "minimum": 1, "maximum": 20},
-                "customer_name": {"type": "string"},
-                "customer_email": {"type": "string"},
-                "customer_phone": {"type": "string"},
-                "start_time": {"type": "string", "description": "Start time of the selected slot"},
+        "type": "function",
+        "function": {
+            "name": "start_checkout",
+            "description": (
+                "Initiate payment checkout after the customer has confirmed all details. "
+                "Only call this after collecting: full name, email, phone, party size, "
+                "and the customer has confirmed the booking summary."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "product_id": {"type": "string"},
+                    "option_id": {"type": "string"},
+                    "availability_id": {"type": "string", "description": "Specific availability slot ID"},
+                    "unit_id": {"type": "string"},
+                    "quantity": {"type": "integer", "minimum": 1, "maximum": 20},
+                    "customer_name": {"type": "string"},
+                    "customer_email": {"type": "string"},
+                    "customer_phone": {"type": "string"},
+                    "start_time": {"type": "string", "description": "Start time of the selected slot"},
+                },
+                "required": [
+                    "product_id", "option_id", "availability_id", "unit_id",
+                    "quantity", "customer_name", "customer_email", "customer_phone",
+                ],
             },
-            "required": [
-                "product_id", "option_id", "availability_id", "unit_id",
-                "quantity", "customer_name", "customer_email", "customer_phone",
-            ],
         },
     },
     {
-        "name": "escalate_to_human",
-        "description": (
-            "Escalate to a human team member when you cannot answer a question "
-            "from the available tour data, or when the customer explicitly requests "
-            "to speak with someone."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "reason": {"type": "string", "description": "Why escalation is needed"},
+        "type": "function",
+        "function": {
+            "name": "escalate_to_human",
+            "description": (
+                "Escalate to a human team member when you cannot answer a question "
+                "from the available tour data, or when the customer explicitly requests "
+                "to speak with someone."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reason": {"type": "string", "description": "Why escalation is needed"},
+                },
+                "required": ["reason"],
             },
-            "required": ["reason"],
         },
     },
 ]
@@ -128,7 +137,7 @@ async def chat(
     product_context: str,
 ) -> dict:
     """
-    Send conversation to Claude Haiku and get response.
+    Send conversation to GPT-4.1-nano and get response.
 
     Returns dict with:
       - "content": the text response
@@ -138,39 +147,37 @@ async def chat(
     client = _get_client()
     system_prompt = build_system_prompt(operator, product_context)
 
-    # Convert our message format to Anthropic format
-    anthropic_messages = []
+    # Build OpenAI messages
+    openai_messages = [{"role": "system", "content": system_prompt}]
     for msg in messages:
         role = msg.get("role", "user")
         content = msg.get("content", "")
         if role in ("user", "assistant"):
-            anthropic_messages.append({"role": role, "content": content})
+            openai_messages.append({"role": role, "content": content})
 
-    response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    response = await client.chat.completions.create(
+        model="gpt-4.1-nano",
         max_tokens=1024,
-        system=system_prompt,
-        messages=anthropic_messages,
+        messages=openai_messages,
         tools=TOOLS,
     )
 
-    # Parse response
-    text_parts = []
+    choice = response.choices[0]
+    text = choice.message.content or ""
     tool_uses = []
-    for block in response.content:
-        if block.type == "text":
-            text_parts.append(block.text)
-        elif block.type == "tool_use":
+
+    if choice.message.tool_calls:
+        for tc in choice.message.tool_calls:
             tool_uses.append({
-                "id": block.id,
-                "name": block.name,
-                "input": block.input,
+                "id": tc.id,
+                "name": tc.function.name,
+                "input": json.loads(tc.function.arguments),
             })
 
     return {
-        "content": "\n".join(text_parts),
+        "content": text,
         "tool_use": tool_uses,
-        "stop_reason": response.stop_reason,
+        "stop_reason": choice.finish_reason,
     }
 
 
@@ -187,61 +194,64 @@ async def handle_tool_calls(
     client = _get_client()
     system_prompt = build_system_prompt(operator, product_context)
 
-    # Build the Anthropic messages including tool results
-    anthropic_messages = []
+    # Build OpenAI messages including tool results
+    openai_messages = [{"role": "system", "content": system_prompt}]
     for msg in messages:
         role = msg.get("role", "user")
         content = msg.get("content", "")
         if role in ("user", "assistant"):
-            anthropic_messages.append({"role": role, "content": content})
+            openai_messages.append({"role": role, "content": content})
 
-    # Add the assistant message with tool use
-    assistant_content = []
-    for tu in tool_uses:
-        assistant_content.append({
-            "type": "tool_use",
-            "id": tu["id"],
-            "name": tu["name"],
-            "input": tu["input"],
-        })
-    anthropic_messages.append({"role": "assistant", "content": assistant_content})
+    # Add the assistant message with tool calls
+    openai_messages.append({
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [
+            {
+                "id": tu["id"],
+                "type": "function",
+                "function": {
+                    "name": tu["name"],
+                    "arguments": json.dumps(tu["input"]),
+                },
+            }
+            for tu in tool_uses
+        ],
+    })
 
     # Execute each tool and add results
-    tool_results = []
     for tu in tool_uses:
         result = await _execute_tool(operator, tu["name"], tu["input"])
-        tool_results.append({
-            "type": "tool_result",
-            "tool_use_id": tu["id"],
+        openai_messages.append({
+            "role": "tool",
+            "tool_call_id": tu["id"],
             "content": json.dumps(result),
         })
-    anthropic_messages.append({"role": "user", "content": tool_results})
 
     # Get follow-up response
-    response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    response = await client.chat.completions.create(
+        model="gpt-4.1-nano",
         max_tokens=1024,
-        system=system_prompt,
-        messages=anthropic_messages,
+        messages=openai_messages,
         tools=TOOLS,
     )
 
-    text_parts = []
+    choice = response.choices[0]
+    text = choice.message.content or ""
     new_tool_uses = []
-    for block in response.content:
-        if block.type == "text":
-            text_parts.append(block.text)
-        elif block.type == "tool_use":
+
+    if choice.message.tool_calls:
+        for tc in choice.message.tool_calls:
             new_tool_uses.append({
-                "id": block.id,
-                "name": block.name,
-                "input": block.input,
+                "id": tc.id,
+                "name": tc.function.name,
+                "input": json.loads(tc.function.arguments),
             })
 
     return {
-        "content": "\n".join(text_parts),
+        "content": text,
         "tool_use": new_tool_uses,
-        "stop_reason": response.stop_reason,
+        "stop_reason": choice.finish_reason,
     }
 
 
@@ -265,7 +275,6 @@ async def _execute_tool(operator: OperatorConfig, tool_name: str, tool_input: di
             return {"error": f"Could not check availability: {str(e)[:200]}"}
 
     elif tool_name == "start_checkout":
-        # Return the checkout parameters — the router layer creates the Stripe session
         return {
             "action": "checkout",
             "product_id": tool_input["product_id"],
