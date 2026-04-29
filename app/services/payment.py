@@ -1,18 +1,14 @@
 """
 Payment service — Stripe checkout session creation and capture.
 
-All checkout sessions are created in the operator's currency (EUR for Eduardo).
+All Stripe calls use the OPERATOR'S Stripe key, not LMDH's.
+LMDH is a software vendor — booking revenue flows directly to the operator.
 Uses manual capture: authorization hold first, capture only after OCTO booking confirmed.
 """
 
-import os
-
 import stripe
 
-from app.config import STRIPE_SECRET_KEY, WIDGET_BASE_URL, OperatorConfig
-
-
-stripe.api_key = STRIPE_SECRET_KEY
+from app.config import WIDGET_BASE_URL, OperatorConfig
 
 
 def create_checkout_session(
@@ -24,7 +20,7 @@ def create_checkout_session(
     metadata: dict,
 ) -> dict:
     """
-    Create a Stripe Checkout Session with manual capture.
+    Create a Stripe Checkout Session on the operator's Stripe account.
 
     Returns dict with checkout_url and session_id.
     """
@@ -54,6 +50,7 @@ def create_checkout_session(
             "operator_id": operator.operator_id,
             "source": "widget",
         },
+        api_key=operator.stripe_secret_key,
     )
 
     return {
@@ -62,20 +59,26 @@ def create_checkout_session(
     }
 
 
-def capture_payment(payment_intent_id: str) -> bool:
-    """Capture a held payment after successful OCTO booking."""
+def capture_payment(operator: OperatorConfig, payment_intent_id: str) -> bool:
+    """Capture a held payment on the operator's Stripe account."""
     try:
-        stripe.PaymentIntent.capture(payment_intent_id)
+        stripe.PaymentIntent.capture(
+            payment_intent_id,
+            api_key=operator.stripe_secret_key,
+        )
         return True
     except Exception as e:
         print(f"[PAYMENT] Capture failed: {e}")
         return False
 
 
-def cancel_payment(payment_intent_id: str) -> bool:
-    """Cancel a payment hold (full refund — card never charged)."""
+def cancel_payment(operator: OperatorConfig, payment_intent_id: str) -> bool:
+    """Cancel a payment hold on the operator's Stripe account (full refund)."""
     try:
-        stripe.PaymentIntent.cancel(payment_intent_id)
+        stripe.PaymentIntent.cancel(
+            payment_intent_id,
+            api_key=operator.stripe_secret_key,
+        )
         return True
     except Exception as e:
         print(f"[PAYMENT] Cancel failed: {e}")

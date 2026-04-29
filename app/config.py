@@ -42,16 +42,30 @@ class OperatorConfig:
     currency: str
     locale: str
     timezone: str
-    commission_pct: float
     product_catalog_path: str
     branding: OperatorBranding
     human_escalation: HumanEscalation
     privacy_policy_url: str
+    # Per-operator credential env var names
+    bokun_api_key_env: str = ""
+    stripe_secret_key_env: str = ""
+    stripe_webhook_secret_env: str = ""
     allowed_origins: list[str] = field(default_factory=list)
 
     @property
     def api_key(self) -> str:
-        return os.getenv("BOKUN_API_KEY", "")
+        """Operator's own Bokun OCTO API key."""
+        return os.getenv(self.bokun_api_key_env, "")
+
+    @property
+    def stripe_secret_key(self) -> str:
+        """Operator's own Stripe secret key."""
+        return os.getenv(self.stripe_secret_key_env, "")
+
+    @property
+    def stripe_webhook_secret(self) -> str:
+        """Operator's own Stripe webhook signing secret."""
+        return os.getenv(self.stripe_webhook_secret_env, "")
 
     @property
     def currency_symbol(self) -> str:
@@ -72,8 +86,10 @@ OPERATORS: dict[str, OperatorConfig] = {
         currency="EUR",
         locale="pt_PT",
         timezone="Europe/Lisbon",
-        commission_pct=0.30,
         product_catalog_path="data/operators/oturista/products.json",
+        bokun_api_key_env="BOKUN_API_KEY_OTURISTA",
+        stripe_secret_key_env="STRIPE_SECRET_KEY_OTURISTA",
+        stripe_webhook_secret_env="STRIPE_WEBHOOK_SECRET_OTURISTA",
         branding=OperatorBranding(
             primary_color="#1a5632",
             bubble_text="Ask about tours!",
@@ -106,10 +122,9 @@ def load_product_catalog(operator: OperatorConfig) -> list[dict]:
 
 # ── Environment shortcuts ────────────────────────────────────────────────────
 
+# ── LMDH-owned shared infra ─────────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_SECRET_KEY", "")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 WIDGET_BASE_URL = os.getenv("WIDGET_BASE_URL", "https://widget.lastminutedealshq.com")
 DASHBOARD_HMAC_SECRET = os.getenv("DASHBOARD_HMAC_SECRET", "")

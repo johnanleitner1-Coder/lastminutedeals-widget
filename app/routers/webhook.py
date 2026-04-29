@@ -1,25 +1,24 @@
 """
 Stripe webhook handler — payment → OCTO fulfillment.
 
+Each operator's Stripe account sends webhooks to /api/stripe-webhook/{operator_id}.
+The operator_id in the URL determines which webhook signing secret to use.
 Returns 200 immediately after spawning a daemon thread for booking execution.
 Idempotency enforced via in-memory lock + Supabase record.
 """
 
 import threading
 import time
-from datetime import datetime, timezone
 
 import stripe
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from app.config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, get_operator
+from app.config import get_operator
 from app.services.booking import execute_booking_async
 from app.services.analytics_store import record_event
 
 router = APIRouter()
-
-stripe.api_key = STRIPE_SECRET_KEY
 
 # In-memory idempotency: prevent concurrent duplicate processing
 # Stores {session_id: timestamp} with TTL-based cleanup
@@ -28,14 +27,21 @@ _webhook_in_flight: dict[str, float] = {}
 _WEBHOOK_TTL = 600  # 10 minutes
 
 
-@router.post("/api/stripe-webhook")
-async def stripe_webhook(request: Request):
+@router.post("/api/stripe-webhook/{operator_id}")
+async def stripe_webhook(operator_id: str, request: Request):
+    operator = get_operator(operator_id)
+    if not operator:
+        return JSONResponse({"error": "Unknown operator"}, status_code=404)
+
+    if not operator.stripe_webhook_secret:
+        return JSONResponse({"error": "Webhook not configured for operator"}, status_code=500)
+
     payload = await request.body()
     sig_header = request.headers.get("Stripe-Signature", "")
 
     try:
         event = stripe.Webhook.construct_event(
-            payload, sig_header, STRIPE_WEBHOOK_SECRET
+            payload, sig_header, operator.stripe_webhook_secret
         )
     except Exception as e:
         return JSONResponse({"error": "Invalid signature"}, status_code=400)
@@ -50,7 +56,6 @@ async def stripe_webhook(request: Request):
         # Idempotency check with TTL cleanup
         with _webhook_lock:
             now = time.time()
-            # Clean up stale entries
             stale = [k for k, t in _webhook_in_flight.items() if now - t > _WEBHOOK_TTL]
             for k in stale:
                 del _webhook_in_flight[k]
@@ -58,13 +63,6 @@ async def stripe_webhook(request: Request):
             if session_id in _webhook_in_flight:
                 return JSONResponse({"status": "ok", "note": "already_processing"})
             _webhook_in_flight[session_id] = now
-
-        operator_id = metadata.get("operator_id", "")
-        operator = get_operator(operator_id)
-        if not operator:
-            with _webhook_lock:
-                _webhook_in_flight.pop(session_id, None)
-            return JSONResponse({"error": "Unknown operator"}, status_code=400)
 
         payment_intent = session.get("payment_intent", "")
         amount_total = session.get("amount_total", 0)
@@ -74,7 +72,6 @@ async def stripe_webhook(request: Request):
         from app.services.conversation import get_conversation_status
         conv_status = None
         if session_token:
-            import asyncio
             conv_status = await get_conversation_status(session_token)
 
         conversation_id = conv_status["id"] if conv_status else None
@@ -103,7 +100,6 @@ async def stripe_webhook(request: Request):
 
     elif event_type == "checkout.session.expired":
         metadata = event["data"]["object"].get("metadata", {})
-        operator_id = metadata.get("operator_id", "")
         await record_event(operator_id, None, "checkout_expired")
 
     return JSONResponse({"status": "ok"})

@@ -90,12 +90,12 @@ def _fulfill_booking(
                 start_time=start_time,
             )
 
-            # OCTO booking succeeded — capture the payment
+            # OCTO booking succeeded — capture the payment on operator's Stripe
             if payment_intent_id:
-                captured = capture_payment(payment_intent_id)
+                captured = capture_payment(operator, payment_intent_id)
                 if not captured:
                     print(f"[BOOKING] Capture failed — would cancel OCTO booking {result.confirmation}")
-                    cancel_payment(payment_intent_id)
+                    cancel_payment(operator, payment_intent_id)
                     await update_conversation_state(
                         conversation_id, "checkout",
                         context={"error": "Payment capture failed. You have been refunded."},
@@ -123,7 +123,7 @@ def _fulfill_booking(
         except BookingError as e:
             print(f"[BOOKING] Failed: {e}")
             if payment_intent_id:
-                cancel_payment(payment_intent_id)
+                cancel_payment(operator, payment_intent_id)
             await update_conversation_state(
                 conversation_id, "checkout",
                 context={"error": f"Booking could not be completed: {str(e)[:200]}. You have been fully refunded."},
@@ -136,7 +136,7 @@ def _fulfill_booking(
         except Exception as e:
             print(f"[BOOKING] Unexpected error: {e}")
             if payment_intent_id:
-                cancel_payment(payment_intent_id)
+                cancel_payment(operator, payment_intent_id)
             await update_conversation_state(
                 conversation_id, "checkout",
                 context={"error": "An unexpected error occurred. You have been fully refunded."},
