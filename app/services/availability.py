@@ -202,7 +202,8 @@ def search_all_availability(
                 date_start=date_start,
                 date_end=date_end,
             )
-        except Exception:
+        except Exception as e:
+            print(f"[AVAIL] Error checking {product['display_name']} ({product['octo_product_id']}): {e}")
             slots = []
 
         # Filter by time of day if requested
