@@ -159,6 +159,7 @@ RULES:
 10. When confirming a booking, include: meeting point with map link, what to bring, cancellation policy, and operator contact info.
 11. Be warm, helpful, and concise. You represent {operator.display_name}.
 12. Use start_checkout only after the customer has reviewed and confirmed the booking summary.
+13. When you call start_checkout, tell the customer a payment link is being prepared — do NOT say the booking is "confirmed" until after payment. Say something like "I'm setting up your payment now — you'll receive a link to complete the booking."
 
 OPERATOR CONTACT (for escalation):{escalation_info if escalation_info else " Contact information not yet configured."}"""
 
