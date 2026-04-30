@@ -261,7 +261,7 @@ def build_ai_product_context(operator: OperatorConfig, availability_by_product: 
 
         lines.append("---")
         lines.append(f"TOUR: {prod['display_name']}")
-        if prod["short_description"]:
+        if prod["short_description"] and "pending" not in prod["short_description"].lower():
             lines.append(f"DESCRIPTION: {prod['short_description']}")
         if prod["duration"]:
             lines.append(f"DURATION: {prod['duration']}")

@@ -6,6 +6,7 @@ GET /api/conversation/{token}/status: polling endpoint for post-payment state.
 """
 
 import json
+import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
@@ -33,6 +34,8 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     if not operator:
         return JSONResponse({"error": "Unknown operator"}, status_code=404)
 
+    t0 = time.time()
+
     # Get or create conversation — don't crash if Supabase is slow
     conversation_id = None
     messages = [{"role": "user", "content": req.message}]
@@ -56,11 +59,16 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     except Exception as e:
         print(f"[CHAT] Conversation lookup failed (responding without history): {e}")
 
+    t1 = time.time()
+    print(f"[TIMING] Supabase: {t1-t0:.1f}s")
+
     # Build product context
     product_context = build_ai_product_context(operator)
 
     # Get AI response
     ai_response = await chat(operator, messages, product_context)
+    t2 = time.time()
+    print(f"[TIMING] AI call 1: {t2-t1:.1f}s")
     print(f"[CHAT] AI stop_reason={ai_response['stop_reason']}, tool_calls={len(ai_response['tool_use'])}, content_len={len(ai_response['content'])}")
     if ai_response["tool_use"]:
         for tu in ai_response["tool_use"]:
@@ -78,10 +86,13 @@ async def chat_endpoint(req: ChatRequest, request: Request):
                 escalation_data = tu["input"]
 
         # Get AI's follow-up response after tool execution
+        t3 = time.time()
         followup = await handle_tool_calls(
             operator, ai_response["tool_use"], messages, product_context
         )
+        t4 = time.time()
         ai_text = followup["content"]
+        print(f"[TIMING] Tool exec + AI call 2: {t4-t3:.1f}s (total: {t4-t0:.1f}s)")
         print(f"[CHAT] Followup: content_len={len(ai_text)}, more_tools={len(followup['tool_use'])}")
 
         # Check for additional tool calls in follow-up
