@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from app.config import get_operator
-from app.services.availability import get_products_with_catalog, search_all_availability
+from app.services.availability import get_products_with_catalog, search_all_availability, _get_client
 
 router = APIRouter()
 
@@ -43,3 +43,27 @@ async def debug_availability(operator_id: str, date_start: str = "", date_end: s
         "availability_results": results,
         "date_range": f"{date_start} to {date_end}",
     })
+
+
+@router.get("/debug/raw-products/{operator_id}")
+async def debug_raw_products(operator_id: str):
+    """Debug endpoint — raw OCTO product data (currency fields)."""
+    operator = get_operator(operator_id)
+    if not operator:
+        return JSONResponse({"error": "Unknown operator"}, status_code=404)
+
+    with _get_client(operator) as client:
+        products = client.get_products(vendor_id=operator.bokun_vendor_id)
+
+    summary = []
+    for p in products:
+        summary.append({
+            "id": p.get("id"),
+            "internalName": p.get("internalName"),
+            "defaultCurrency": p.get("defaultCurrency"),
+            "availableCurrencies": p.get("availableCurrencies"),
+            "currency": p.get("currency"),
+            "locale": p.get("locale"),
+            "all_keys": sorted(p.keys()),
+        })
+    return JSONResponse({"products": summary})
