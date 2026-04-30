@@ -232,7 +232,7 @@ def search_all_availability(
             "product_id": product["octo_product_id"],
             "option_id": product["option_id"],
             "unit_id": unit_id,
-            "slots": slots[:5],  # cap at 5 slots per tour
+            "slots": slots,
         }
 
     # Check all products in parallel (max 6 threads to avoid hammering the API)
@@ -288,7 +288,7 @@ def build_ai_product_context(operator: OperatorConfig, availability_by_product: 
             avail_slots = availability_by_product[prod["octo_product_id"]]
             if avail_slots:
                 lines.append("AVAILABLE SLOTS (live):")
-                for s in avail_slots[:10]:  # cap at 10 slots
+                for s in avail_slots:
                     start = s.get("start_time", "")
                     price = s.get("price_per_unit")
                     currency = s.get("currency", operator.currency)
