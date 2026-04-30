@@ -167,7 +167,7 @@ def get_availability_for_date(
             "end_time": slot.get("localDateTimeEnd", ""),
             "status": slot.get("status", ""),
             "vacancies": slot.get("vacancies"),
-            "price_per_unit": price_per_unit,
+            "price_per_unit": round(price_per_unit) if price_per_unit is not None else None,
             "currency": currency,
         })
 
