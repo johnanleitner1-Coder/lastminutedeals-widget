@@ -36,7 +36,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
 
     t0 = time.time()
 
-    # Get or create conversation — don't crash if Supabase is slow
+    # Get or create conversation
     conversation_id = None
     messages = [{"role": "user", "content": req.message}]
     conv = {}
@@ -49,15 +49,15 @@ async def chat_endpoint(req: ChatRequest, request: Request):
             user_agent=request.headers.get("user-agent", ""),
         )
         conversation_id = conv["id"]
-        await append_message(conversation_id, "user", req.message)
+        await append_message(conversation_id, "user", req.message, session_token=req.session_token)
 
-        # Build message history from prior conversation
-        messages_raw = conv.get("messages", "[]")
+        # Build message history from in-memory conversation
+        messages_raw = conv.get("messages", [])
         if isinstance(messages_raw, str):
             messages_raw = json.loads(messages_raw)
-        messages = messages_raw + [{"role": "user", "content": req.message}]
+        messages = messages_raw if messages_raw else [{"role": "user", "content": req.message}]
     except Exception as e:
-        print(f"[CHAT] Conversation lookup failed (responding without history): {e}")
+        print(f"[CHAT] Conversation setup failed: {e}")
 
     t1 = time.time()
     print(f"[TIMING] Supabase: {t1-t0:.1f}s")
@@ -106,10 +106,10 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     else:
         ai_text = ai_response["content"]
 
-    # Save AI response (best-effort — don't crash if Supabase is slow)
+    # Save AI response
     if conversation_id:
         try:
-            await append_message(conversation_id, "assistant", ai_text)
+            await append_message(conversation_id, "assistant", ai_text, session_token=req.session_token)
             if checkout_data:
                 await update_conversation_state(conversation_id, "checkout")
             elif escalation_data:
@@ -154,17 +154,21 @@ async def create_session(request: Request):
         return JSONResponse({"error": "Unknown operator"}, status_code=404)
 
     token = generate_session_token()
-    conv = await get_or_create_conversation(
-        operator_id=operator_id,
-        session_token=token,
-        channel="web",
-        referrer=request.headers.get("referer", ""),
-        user_agent=request.headers.get("user-agent", ""),
-    )
+    try:
+        conv = await get_or_create_conversation(
+            operator_id=operator_id,
+            session_token=token,
+            channel="web",
+            referrer=request.headers.get("referer", ""),
+            user_agent=request.headers.get("user-agent", ""),
+        )
+        conv_id = conv["id"]
+    except Exception:
+        conv_id = None
 
     return JSONResponse({
         "session_token": token,
-        "conversation_id": conv["id"],
+        "conversation_id": conv_id,
         "welcome_message": operator.branding.welcome_message,
         "branding": {
             "primary_color": operator.branding.primary_color,
