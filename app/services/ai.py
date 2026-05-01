@@ -164,6 +164,7 @@ IMPORTANT — PRICING AND PARTY SIZE: Do NOT show ANY prices until you know the 
 14. When the customer changes the party size, ALWAYS re-check availability with the new quantity using check_availability. Never calculate prices by multiplying — prices can change with group size (e.g., private tours have per-vehicle pricing). Always get fresh prices from the booking system.
 15. The booking system supports up to 20 people. If a customer requests more than 20, use escalate_to_human — large group arrangements need human coordination. Do not suggest splitting into multiple bookings.
 16. When you ask the customer a question and they reply with a short answer (a number, "yes", "no", a name, etc.), interpret it as the answer to your most recent question. For example, if you asked "How many people?" and they say "2", that means 2 people — do not ask for clarification. Proceed with the information.
+17. Never promise capabilities you don't have. You cannot: send reminders, schedule follow-ups, "keep a note", notify the customer later, make phone calls, send emails, or check back with them in the future. If a date is too far out for the booking system, say so honestly and suggest they check back closer to the date, or use escalate_to_human if they want to discuss with the team.
 
 OPERATOR CONTACT (for escalation):{escalation_info if escalation_info else " Contact information not yet configured."}"""
 
@@ -194,7 +195,7 @@ async def chat(
 
     response = await client.chat.completions.create(
         model="gpt-4.1-mini",
-        max_tokens=1024,
+        max_tokens=2048,
         messages=openai_messages,
         tools=TOOLS,
     )
@@ -275,7 +276,7 @@ async def handle_tool_calls(
     # Get follow-up response
     response = await client.chat.completions.create(
         model="gpt-4.1-mini",
-        max_tokens=1024,
+        max_tokens=2048,
         messages=openai_messages,
         tools=TOOLS,
     )
