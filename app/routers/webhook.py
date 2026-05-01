@@ -1,10 +1,13 @@
 """
 Stripe webhook handler — payment → OCTO fulfillment.
 
-Each operator's Stripe account sends webhooks to /api/stripe-webhook/{operator_id}.
+Each operator's Stripe connected account sends webhooks to /api/stripe-webhook/{operator_id}.
 The operator_id in the URL determines which webhook signing secret to use.
 Returns 200 immediately after spawning a daemon thread for booking execution.
-Idempotency enforced via in-memory lock + Supabase record.
+Idempotency enforced via in-memory lock.
+
+Stripe Connect: webhooks from connected accounts include a Stripe-Account header.
+We use the platform secret key for all API calls, with stripe_account for the operator.
 """
 
 import threading
@@ -14,7 +17,7 @@ import stripe
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from app.config import get_operator
+from app.config import get_operator, STRIPE_PLATFORM_SECRET_KEY
 from app.services.booking import execute_booking_async
 from app.services.analytics_store import record_event
 

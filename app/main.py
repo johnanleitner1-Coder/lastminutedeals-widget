@@ -18,7 +18,7 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
 from app.config import OPERATORS, WIDGET_BASE_URL
-from app.routers import health, chat, checkout, webhook, whatsapp
+from app.routers import health, chat, checkout, webhook, whatsapp, connect
 
 APP_DIR = Path(__file__).parent
 TEMPLATES = Jinja2Templates(directory=str(APP_DIR / "templates"))
@@ -102,6 +102,7 @@ app.include_router(chat.router)
 app.include_router(checkout.router)
 app.include_router(webhook.router)
 app.include_router(whatsapp.router)
+app.include_router(connect.router)
 
 # Static files (widget.js)
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")

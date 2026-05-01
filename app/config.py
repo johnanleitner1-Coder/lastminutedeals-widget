@@ -48,19 +48,15 @@ class OperatorConfig:
     privacy_policy_url: str
     # Per-operator credential env var names
     bokun_api_key_env: str = ""
-    stripe_secret_key_env: str = ""
     stripe_webhook_secret_env: str = ""
+    # Stripe Connect: operator's connected account ID (e.g. "acct_1NXyz...")
+    stripe_connect_account_id: str = ""
     allowed_origins: list[str] = field(default_factory=list)
 
     @property
     def api_key(self) -> str:
         """Operator's own Bokun OCTO API key."""
         return os.getenv(self.bokun_api_key_env, "")
-
-    @property
-    def stripe_secret_key(self) -> str:
-        """Operator's own Stripe secret key."""
-        return os.getenv(self.stripe_secret_key_env, "")
 
     @property
     def stripe_webhook_secret(self) -> str:
@@ -88,8 +84,8 @@ OPERATORS: dict[str, OperatorConfig] = {
         timezone="Europe/Lisbon",
         product_catalog_path="data/operators/oturista/products.json",
         bokun_api_key_env="BOKUN_API_KEY_OTURISTA",
-        stripe_secret_key_env="STRIPE_SECRET_KEY_OTURISTA",
         stripe_webhook_secret_env="STRIPE_WEBHOOK_SECRET_OTURISTA",
+        stripe_connect_account_id="",  # populated after Eduardo completes Stripe Connect onboarding
         branding=OperatorBranding(
             primary_color="#1a5632",
             bubble_text="Ask about tours!",
@@ -130,6 +126,11 @@ DASHBOARD_HMAC_SECRET = os.getenv("DASHBOARD_HMAC_SECRET", "")
 if not DASHBOARD_HMAC_SECRET:
     print("[WARNING] DASHBOARD_HMAC_SECRET not set — dashboard will be inaccessible")
     DASHBOARD_HMAC_SECRET = "unset-generate-a-random-secret"
+
+# Stripe Connect — LMDH platform key (all Stripe API calls go through this)
+STRIPE_PLATFORM_SECRET_KEY = os.getenv("STRIPE_PLATFORM_SECRET_KEY", "")
+if not STRIPE_PLATFORM_SECRET_KEY:
+    print("[WARNING] STRIPE_PLATFORM_SECRET_KEY not set — payments will fail")
 
 # WhatsApp (Meta Cloud API)
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")

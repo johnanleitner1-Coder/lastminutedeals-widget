@@ -1,14 +1,15 @@
 """
-Payment service — Stripe checkout session creation and capture.
+Payment service — Stripe Connect checkout session creation and capture.
 
-All Stripe calls use the OPERATOR'S Stripe key, not LMDH's.
-LMDH is a software vendor — booking revenue flows directly to the operator.
+Uses Stripe Connect direct charges: all API calls use LMDH's platform key
+with stripe_account pointing to the operator's connected account.
+Money flows directly to the operator. Application fees added later.
 Uses manual capture: authorization hold first, capture only after OCTO booking confirmed.
 """
 
 import stripe
 
-from app.config import WIDGET_BASE_URL, OperatorConfig
+from app.config import WIDGET_BASE_URL, STRIPE_PLATFORM_SECRET_KEY, OperatorConfig
 
 
 def create_checkout_session(
@@ -20,7 +21,8 @@ def create_checkout_session(
     metadata: dict,
 ) -> dict:
     """
-    Create a Stripe Checkout Session on the operator's Stripe account.
+    Create a Stripe Checkout Session as a direct charge on the operator's
+    connected Stripe account via Stripe Connect.
 
     Returns dict with checkout_url and session_id.
     """
@@ -50,7 +52,8 @@ def create_checkout_session(
             "operator_id": operator.operator_id,
             "source": "widget",
         },
-        api_key=operator.stripe_secret_key,
+        api_key=STRIPE_PLATFORM_SECRET_KEY,
+        stripe_account=operator.stripe_connect_account_id,
     )
 
     return {
@@ -60,11 +63,12 @@ def create_checkout_session(
 
 
 def capture_payment(operator: OperatorConfig, payment_intent_id: str) -> bool:
-    """Capture a held payment on the operator's Stripe account."""
+    """Capture a held payment on the operator's connected Stripe account."""
     try:
         stripe.PaymentIntent.capture(
             payment_intent_id,
-            api_key=operator.stripe_secret_key,
+            api_key=STRIPE_PLATFORM_SECRET_KEY,
+            stripe_account=operator.stripe_connect_account_id,
         )
         return True
     except Exception as e:
@@ -73,11 +77,12 @@ def capture_payment(operator: OperatorConfig, payment_intent_id: str) -> bool:
 
 
 def cancel_payment(operator: OperatorConfig, payment_intent_id: str) -> bool:
-    """Cancel a payment hold on the operator's Stripe account (full refund)."""
+    """Cancel a payment hold on the operator's connected Stripe account (full refund)."""
     try:
         stripe.PaymentIntent.cancel(
             payment_intent_id,
-            api_key=operator.stripe_secret_key,
+            api_key=STRIPE_PLATFORM_SECRET_KEY,
+            stripe_account=operator.stripe_connect_account_id,
         )
         return True
     except Exception as e:
