@@ -64,7 +64,7 @@ async def get_or_create_conversation(
 
     # 2. Try Supabase (best-effort)
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=2.0) as client:
             if channel == "web" and session_token:
                 resp = await client.get(
                     f"{SUPABASE_URL}/rest/v1/widget_conversations",
@@ -128,7 +128,7 @@ async def get_or_create_conversation(
 
     # Best-effort Supabase write
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=2.0) as client:
             row = {**conv, "messages": json.dumps([]), "context": json.dumps({})}
             resp = await client.post(
                 f"{SUPABASE_URL}/rest/v1/widget_conversations",
@@ -177,7 +177,7 @@ async def append_message(
 
     # Best-effort Supabase write
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=2.0) as client:
             resp = await client.get(
                 f"{SUPABASE_URL}/rest/v1/widget_conversations",
                 headers=_headers(),
@@ -229,7 +229,7 @@ async def update_conversation_state(conversation_id: str, state: str, **kwargs) 
         if "revenue_cents" in kwargs:
             update["revenue_cents"] = kwargs["revenue_cents"]
 
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=2.0) as client:
             await client.patch(
                 f"{SUPABASE_URL}/rest/v1/widget_conversations",
                 headers=_headers(),
@@ -247,7 +247,7 @@ async def get_conversation_by_id(conversation_id: str) -> dict | None:
             return conv
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=2.0) as client:
             resp = await client.get(
                 f"{SUPABASE_URL}/rest/v1/widget_conversations",
                 headers=_headers(),
@@ -267,7 +267,7 @@ async def get_conversation_by_phone(operator_id: str, whatsapp_phone: str) -> di
         return _memory[key]
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=2.0) as client:
             resp = await client.get(
                 f"{SUPABASE_URL}/rest/v1/widget_conversations",
                 headers=_headers(),
@@ -299,7 +299,7 @@ async def get_conversation_status(session_token: str) -> dict | None:
         }
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=2.0) as client:
             resp = await client.get(
                 f"{SUPABASE_URL}/rest/v1/widget_conversations",
                 headers=_headers(),
