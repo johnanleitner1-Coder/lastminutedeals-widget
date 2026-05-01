@@ -105,14 +105,15 @@ async def create_checkout(req: CheckoutRequest):
         },
     )
 
-    currency_symbol = operator.currency_symbol
+    slot_currency = slot.get("currency", operator.currency)
+    currency_symbol = "$" if slot_currency == "USD" else "€" if slot_currency == "EUR" else slot_currency + " "
     return JSONResponse({
         "checkout_url": result["checkout_url"],
         "session_id": result["session_id"],
         "product_name": product_name,
         "price_per_person": price,
         "total_price": price * req.quantity,
-        "currency": operator.currency,
+        "currency": slot_currency,
         "currency_symbol": currency_symbol,
         "quantity": req.quantity,
     })
