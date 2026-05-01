@@ -61,6 +61,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
 
     t1 = time.time()
     print(f"[TIMING] Supabase: {t1-t0:.1f}s")
+    print(f"[CHAT] History: {len(messages)} messages, roles: {[m.get('role','?') for m in messages]}")
 
     # Build product context
     product_context = build_ai_product_context(operator)
