@@ -42,7 +42,7 @@ async def get_or_create_conversation(
     Look up an existing conversation or create a new one.
     Web: keyed by session_token. WhatsApp: keyed by phone number.
     """
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         # Look up existing
         if channel == "web" and session_token:
             resp = await client.get(
@@ -107,7 +107,7 @@ async def append_message(
     tool_use: dict | None = None,
 ) -> None:
     """Append a message to the conversation's message history."""
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         # Get current messages
         resp = await client.get(
             f"{SUPABASE_URL}/rest/v1/widget_conversations",
@@ -151,7 +151,7 @@ async def update_conversation_state(conversation_id: str, state: str, **kwargs) 
     if "revenue_cents" in kwargs:
         update["revenue_cents"] = kwargs["revenue_cents"]
 
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         await client.patch(
             f"{SUPABASE_URL}/rest/v1/widget_conversations",
             headers=_headers(),
@@ -161,7 +161,7 @@ async def update_conversation_state(conversation_id: str, state: str, **kwargs) 
 
 
 async def get_conversation_by_id(conversation_id: str) -> dict | None:
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(
             f"{SUPABASE_URL}/rest/v1/widget_conversations",
             headers=_headers(),
@@ -174,7 +174,7 @@ async def get_conversation_by_id(conversation_id: str) -> dict | None:
 
 async def get_conversation_by_phone(operator_id: str, whatsapp_phone: str) -> dict | None:
     """Look up the most recent conversation by WhatsApp phone number."""
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(
             f"{SUPABASE_URL}/rest/v1/widget_conversations",
             headers=_headers(),
@@ -193,7 +193,7 @@ async def get_conversation_by_phone(operator_id: str, whatsapp_phone: str) -> di
 
 async def get_conversation_status(session_token: str) -> dict | None:
     """Get conversation state for polling (widget checks this after payment)."""
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(
             f"{SUPABASE_URL}/rest/v1/widget_conversations",
             headers=_headers(),
