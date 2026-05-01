@@ -8,6 +8,7 @@ The merged result is what the AI system prompt reads from.
 """
 
 import json
+import math
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -167,7 +168,7 @@ def get_availability_for_date(
             "end_time": slot.get("localDateTimeEnd", ""),
             "status": slot.get("status", ""),
             "vacancies": slot.get("vacancies"),
-            "price_per_unit": round(price_per_unit) if price_per_unit is not None else None,
+            "price_per_unit": math.ceil(price_per_unit) if price_per_unit is not None else None,
             "currency": currency,
         })
 
