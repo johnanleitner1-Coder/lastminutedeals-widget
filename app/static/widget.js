@@ -347,8 +347,20 @@
         messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    // Auto-restore session
-    if (sessionToken) {
-        // Session exists — will be used on first message
+    // Auto-restore session — show welcome message if no messages visible
+    if (sessionToken && messagesEl && messagesEl.children.length === 0) {
+        // Session exists but no messages shown — fetch welcome message
+        fetch(API_URL + '/api/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operator_id: OPERATOR_ID }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.welcome_message && messagesEl.children.length === 0) {
+                addMessage('assistant', data.welcome_message);
+            }
+        })
+        .catch(function() {});
     }
 })();
