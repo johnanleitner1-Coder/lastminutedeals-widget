@@ -15,7 +15,7 @@ async def health():
 
 
 @router.get("/debug/availability/{operator_id}")
-async def debug_availability(operator_id: str, date_start: str = "", date_end: str = ""):
+async def debug_availability(operator_id: str, date_start: str = "", date_end: str = "", quantity: int = 1):
     """Debug endpoint — check raw availability for all products."""
     operator = get_operator(operator_id)
     if not operator:
@@ -35,7 +35,7 @@ async def debug_availability(operator_id: str, date_start: str = "", date_end: s
         for p in products
     ]
 
-    results = search_all_availability(operator, date_start, date_end, quantity=1)
+    results = search_all_availability(operator, date_start, date_end, quantity=quantity)
 
     return JSONResponse({
         "products_loaded": len(products),
