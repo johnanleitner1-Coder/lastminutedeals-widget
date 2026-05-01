@@ -26,6 +26,11 @@ TEMPLATES = Jinja2Templates(directory=str(APP_DIR / "templates"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup: initialize SQLite database
+    from app.services.database import init_db
+    init_db()
+    print("[STARTUP] SQLite database initialized")
+
     # Startup: pre-load product catalogs for all operators
     from app.services.availability import get_products_with_catalog
     for op_id, op in OPERATORS.items():

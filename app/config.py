@@ -123,8 +123,7 @@ def load_product_catalog(operator: OperatorConfig) -> list[dict]:
 # ── Environment shortcuts ────────────────────────────────────────────────────
 
 # ── LMDH-owned shared infra ─────────────────────────────────────────────────
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_KEY = os.getenv("SUPABASE_SECRET_KEY", "")
+DATABASE_PATH = os.getenv("DATABASE_PATH", str(BASE_DIR / "data" / "widget.db"))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 WIDGET_BASE_URL = os.getenv("WIDGET_BASE_URL", "https://widget.lastminutedealshq.com")
 DASHBOARD_HMAC_SECRET = os.getenv("DASHBOARD_HMAC_SECRET", "")

@@ -7,18 +7,15 @@ Shows conversations, bookings, revenue, conversion rates.
 
 import hashlib
 import hmac
-import json
 from datetime import datetime, timezone, timedelta
 
-import httpx
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from app.config import (
-    SUPABASE_URL, SUPABASE_KEY, DASHBOARD_HMAC_SECRET, get_operator,
-)
+from app.config import DASHBOARD_HMAC_SECRET, get_operator
+from app.services.database import db_analytics_data
 
 router = APIRouter()
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
@@ -31,14 +28,6 @@ def _verify_token(operator_id: str, token: str) -> bool:
         hashlib.sha256,
     ).hexdigest()[:32]
     return hmac.compare_digest(token, expected)
-
-
-def _supabase_headers() -> dict:
-    return {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-    }
 
 
 @router.get("/dashboard")
@@ -72,78 +61,20 @@ async def analytics_data(op: str = "", token: str = "", days: int = 30):
 
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
-    async with httpx.AsyncClient() as client:
-        # Total conversations
-        conv_resp = await client.get(
-            f"{SUPABASE_URL}/rest/v1/widget_conversations",
-            headers={**_supabase_headers(), "Prefer": "count=exact"},
-            params={
-                "operator_id": f"eq.{op}",
-                "created_at": f"gte.{since}",
-                "select": "id",
-            },
-        )
-        total_conversations = int(conv_resp.headers.get("content-range", "0-0/0").split("/")[-1])
+    try:
+        data = db_analytics_data(op, since)
+    except Exception as e:
+        print(f"[DASHBOARD] Analytics query failed: {e}")
+        data = {
+            "total_conversations": 0, "total_bookings": 0,
+            "total_revenue_cents": 0, "web_conversations": 0,
+            "whatsapp_conversations": 0, "web_bookings": 0,
+            "whatsapp_bookings": 0, "total_escalations": 0,
+            "recent_bookings": [],
+        }
 
-        # Confirmed bookings
-        booked_resp = await client.get(
-            f"{SUPABASE_URL}/rest/v1/widget_conversations",
-            headers={**_supabase_headers(), "Prefer": "count=exact"},
-            params={
-                "operator_id": f"eq.{op}",
-                "converted": "eq.true",
-                "created_at": f"gte.{since}",
-                "select": "id,revenue_cents,channel,booking_id,created_at",
-            },
-        )
-        bookings = booked_resp.json() if booked_resp.is_success else []
-        total_bookings = int(booked_resp.headers.get("content-range", "0-0/0").split("/")[-1])
-
-        # Revenue
-        total_revenue_cents = sum(b.get("revenue_cents", 0) or 0 for b in bookings)
-
-        # Per-channel breakdown
-        web_bookings = sum(1 for b in bookings if b.get("channel") == "web")
-        whatsapp_bookings = sum(1 for b in bookings if b.get("channel") == "whatsapp")
-
-        # Per-channel conversations
-        web_conv_resp = await client.get(
-            f"{SUPABASE_URL}/rest/v1/widget_conversations",
-            headers={**_supabase_headers(), "Prefer": "count=exact"},
-            params={
-                "operator_id": f"eq.{op}",
-                "channel": "eq.web",
-                "created_at": f"gte.{since}",
-                "select": "id",
-            },
-        )
-        web_conversations = int(web_conv_resp.headers.get("content-range", "0-0/0").split("/")[-1])
-
-        wa_conv_resp = await client.get(
-            f"{SUPABASE_URL}/rest/v1/widget_conversations",
-            headers={**_supabase_headers(), "Prefer": "count=exact"},
-            params={
-                "operator_id": f"eq.{op}",
-                "channel": "eq.whatsapp",
-                "created_at": f"gte.{since}",
-                "select": "id",
-            },
-        )
-        whatsapp_conversations = int(wa_conv_resp.headers.get("content-range", "0-0/0").split("/")[-1])
-
-        # Escalations
-        esc_resp = await client.get(
-            f"{SUPABASE_URL}/rest/v1/widget_conversations",
-            headers={**_supabase_headers(), "Prefer": "count=exact"},
-            params={
-                "operator_id": f"eq.{op}",
-                "state": "eq.human_escalation",
-                "created_at": f"gte.{since}",
-                "select": "id",
-            },
-        )
-        total_escalations = int(esc_resp.headers.get("content-range", "0-0/0").split("/")[-1])
-
+    total_conversations = data["total_conversations"]
+    total_bookings = data["total_bookings"]
     conversion_rate = (total_bookings / total_conversations * 100) if total_conversations > 0 else 0
     currency_symbol = operator.currency_symbol
 
@@ -151,22 +82,14 @@ async def analytics_data(op: str = "", token: str = "", days: int = 30):
         "period_days": days,
         "total_conversations": total_conversations,
         "total_bookings": total_bookings,
-        "total_revenue": total_revenue_cents / 100,
+        "total_revenue": data["total_revenue_cents"] / 100,
         "currency": operator.currency,
         "currency_symbol": currency_symbol,
         "conversion_rate": round(conversion_rate, 1),
-        "escalation_rate": round(total_escalations / total_conversations * 100, 1) if total_conversations > 0 else 0,
+        "escalation_rate": round(data["total_escalations"] / total_conversations * 100, 1) if total_conversations > 0 else 0,
         "channels": {
-            "web": {"conversations": web_conversations, "bookings": web_bookings},
-            "whatsapp": {"conversations": whatsapp_conversations, "bookings": whatsapp_bookings},
+            "web": {"conversations": data["web_conversations"], "bookings": data["web_bookings"]},
+            "whatsapp": {"conversations": data["whatsapp_conversations"], "bookings": data["whatsapp_bookings"]},
         },
-        "recent_bookings": [
-            {
-                "booking_id": b.get("booking_id", ""),
-                "channel": b.get("channel", ""),
-                "revenue": (b.get("revenue_cents", 0) or 0) / 100,
-                "created_at": b.get("created_at", ""),
-            }
-            for b in bookings[:20]
-        ],
+        "recent_bookings": data["recent_bookings"],
     })
