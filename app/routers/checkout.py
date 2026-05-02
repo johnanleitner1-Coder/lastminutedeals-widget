@@ -63,7 +63,7 @@ async def create_checkout(req: CheckoutRequest):
             product_name = p.get("display_name", p.get("octo_internal_name", req.product_id))
             break
 
-    price = slot.get("price_per_unit")
+    price = slot.get("price")
     if not price or price <= 0:
         return JSONResponse({"error": "Price not available for this slot."}, status_code=400)
 

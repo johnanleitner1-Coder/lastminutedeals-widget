@@ -162,13 +162,17 @@ def get_availability_for_date(
             qty = max(1, quantity)
             price_per_unit = (raw / (10 ** precision)) / qty
 
+        total = math.ceil(price_per_unit * quantity) if price_per_unit is not None else None
+
         result.append({
             "availability_id": slot.get("id", ""),
             "start_time": slot.get("localDateTimeStart", slot.get("localDate", "")),
             "end_time": slot.get("localDateTimeEnd", ""),
             "status": slot.get("status", ""),
             "vacancies": slot.get("vacancies"),
-            "price_per_unit": math.ceil(price_per_unit) if price_per_unit is not None else None,
+            "price": math.ceil(price_per_unit) if price_per_unit is not None else None,
+            "total_price": total,
+            "quantity": quantity,
             "currency": currency,
         })
 
@@ -291,12 +295,13 @@ def build_ai_product_context(operator: OperatorConfig, availability_by_product: 
                 lines.append("AVAILABLE SLOTS (live):")
                 for s in avail_slots:
                     start = s.get("start_time", "")
-                    price = s.get("price_per_unit")
+                    total = s.get("total_price")
+                    qty = s.get("quantity", 1)
                     currency = s.get("currency", operator.currency)
                     vacancies = s.get("vacancies")
                     line = f"  - {start}"
-                    if price is not None:
-                        line += f" — {price:.0f} {currency}/person"
+                    if total is not None:
+                        line += f" — {total:.0f} {currency} total for {qty} people"
                     if vacancies is not None:
                         line += f" ({vacancies} spots left)"
                     lines.append(line)

@@ -158,7 +158,7 @@ async def whatsapp_incoming(request: Request):
                 )
                 matching = [s for s in slots if s["availability_id"] == checkout_data.get("availability_id")]
                 if matching:
-                    price = matching[0]["price_per_unit"]
+                    price = matching[0]["price"]
                     result = create_checkout_session(
                         operator=operator,
                         product_name=product_name,
