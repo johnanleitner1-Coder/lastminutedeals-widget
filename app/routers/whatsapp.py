@@ -157,6 +157,10 @@ async def whatsapp_incoming(request: Request):
                     checkout_data.get("start_time", "")[:10],
                 )
                 matching = [s for s in slots if s["availability_id"] == checkout_data.get("availability_id")]
+                if not matching and checkout_data.get("start_time"):
+                    # Fallback: match by start time (AI may hallucinate availability_id)
+                    req_time = checkout_data["start_time"][:16]
+                    matching = [s for s in slots if s.get("start_time", "")[:16] == req_time]
                 if matching:
                     price = matching[0]["price"]
                     result = create_checkout_session(
@@ -181,7 +185,7 @@ async def whatsapp_incoming(request: Request):
                     # Send AI text first, then payment link
                     await send_text_message(phone, ai_text)
                     symbol = operator.currency_symbol
-                    total = price * checkout_data["quantity"]
+                    total = matching[0].get("total_price") or price * checkout_data["quantity"]
                     await send_link_message(
                         phone,
                         f"Complete your booking — {symbol}{total:.0f} total:",

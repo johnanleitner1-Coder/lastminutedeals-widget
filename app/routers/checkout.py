@@ -64,6 +64,7 @@ async def create_checkout(req: CheckoutRequest):
             break
 
     price = slot.get("price")
+    total_price = slot.get("total_price") or (price * req.quantity if price else None)
     if not price or price <= 0:
         return JSONResponse({"error": "Price not available for this slot."}, status_code=400)
 
@@ -100,7 +101,7 @@ async def create_checkout(req: CheckoutRequest):
         metadata={
             "product_id": req.product_id,
             "quantity": req.quantity,
-            "amount": price * req.quantity,
+            "amount": total_price,
             "currency": operator.currency,
         },
     )
@@ -112,7 +113,7 @@ async def create_checkout(req: CheckoutRequest):
         "session_id": result["session_id"],
         "product_name": product_name,
         "price_per_person": price,
-        "total_price": price * req.quantity,
+        "total_price": total_price,
         "currency": slot_currency,
         "currency_symbol": currency_symbol,
         "quantity": req.quantity,

@@ -58,15 +58,34 @@
   },
   {
     "octo_product_id": "869253",
-    "display_name": "Sintra & Cascais Small-Group Day Tour Pena Palace, Regaleira, Cabo da Roca ",
-    "short_description": "Description pending — Eduardo to provide",
-    "duration": "",
-    "meeting_point": "",
+    "display_name": "Sintra & Cascais Small-Group Day Tour Pena Palace, Regaleira, Cabo da Roca",
+    "short_description": "Full-day small group tour combining Sintra's palaces with the stunning coastline of Cascais and Cabo da Roca, Europe's westernmost point.",
+    "duration": "9 hours",
+    "meeting_point": "Hotel pickup — pickup and drop-off at your accommodation in Lisbon",
     "meeting_point_maps_url": "",
-    "highlights": [],
-    "inclusions": [],
-    "exclusions": [],
-    "what_to_bring": [],
+    "highlights": [
+      "Visit Pena Palace and Quinta da Regaleira",
+      "See Cabo da Roca — Europe's westernmost point",
+      "Explore the charming coastal town of Cascais",
+      "Small group experience with professional guide"
+    ],
+    "inclusions": [
+      "Pickup and drop-off at hotel/accommodation",
+      "Tickets included",
+      "Guided visits",
+      "Professional guide",
+      "Bottled water",
+      "Coffee and local pastries"
+    ],
+    "exclusions": [
+      "Lunch",
+      "Personal expenses"
+    ],
+    "what_to_bring": [
+      "Comfortable walking shoes",
+      "Camera",
+      "Sunscreen and hat (summer)"
+    ],
     "languages": [
       "en",
       "pt"
@@ -78,14 +97,32 @@
   {
     "octo_product_id": "869252",
     "display_name": "Sintra Half-Day Small Group Tour with Pena Palace Tickets Included",
-    "short_description": "Description pending — Eduardo to provide",
-    "duration": "",
-    "meeting_point": "",
+    "short_description": "Half-day small group tour to Sintra with Pena Palace tickets included. Explore the fairytale palaces and gardens of Portugal's most enchanting town.",
+    "duration": "5 hours",
+    "meeting_point": "Hotel pickup — pickup and drop-off at your accommodation in Lisbon",
     "meeting_point_maps_url": "",
-    "highlights": [],
-    "inclusions": [],
-    "exclusions": [],
-    "what_to_bring": [],
+    "highlights": [
+      "Visit Pena Palace with skip-the-line tickets",
+      "Explore the historic town of Sintra",
+      "Small group experience with professional guide"
+    ],
+    "inclusions": [
+      "Pickup and drop-off at hotel/accommodation",
+      "Tickets included",
+      "Guided visits",
+      "Professional guide",
+      "Bottled water",
+      "Coffee and local pastries"
+    ],
+    "exclusions": [
+      "Lunch",
+      "Personal expenses"
+    ],
+    "what_to_bring": [
+      "Comfortable walking shoes",
+      "Camera",
+      "Sunscreen and hat (summer)"
+    ],
     "languages": [
       "en",
       "pt"
@@ -154,14 +191,33 @@
   {
     "octo_product_id": "869248",
     "display_name": "Fátima, Nazaré & Óbidos Private Day Trip from Lisbon",
-    "short_description": "Description pending — Eduardo to provide",
-    "duration": "",
-    "meeting_point": "",
+    "short_description": "Private full-day tour to three of Portugal's most iconic destinations: the pilgrimage site of Fátima, the giant waves of Nazaré, and the medieval walled town of Óbidos.",
+    "duration": "9 hours",
+    "meeting_point": "Hotel pickup — pickup and drop-off at your accommodation in Lisbon",
     "meeting_point_maps_url": "",
-    "highlights": [],
-    "inclusions": [],
-    "exclusions": [],
-    "what_to_bring": [],
+    "highlights": [
+      "Visit the Sanctuary of Our Lady of Fátima",
+      "See the famous big wave beach at Nazaré",
+      "Explore the medieval walled town of Óbidos",
+      "Private tour with professional guide"
+    ],
+    "inclusions": [
+      "Pickup and drop-off at hotel/accommodation",
+      "Tickets included",
+      "Guided visits",
+      "Professional guide",
+      "Bottled water",
+      "Coffee and local pastries"
+    ],
+    "exclusions": [
+      "Lunch",
+      "Personal expenses"
+    ],
+    "what_to_bring": [
+      "Comfortable walking shoes",
+      "Camera",
+      "Sunscreen and hat (summer)"
+    ],
     "languages": [
       "en",
       "pt"
@@ -173,14 +229,33 @@
   {
     "octo_product_id": "869251",
     "display_name": "Sintra & Cascais Private Day Trip: Pena Palace, Regaleira, Cabo da Roca",
-    "short_description": "Description pending — Eduardo to provide",
-    "duration": "",
-    "meeting_point": "",
+    "short_description": "Private full-day tour to Sintra and Cascais. Visit Pena Palace, Quinta da Regaleira, and the dramatic cliffs of Cabo da Roca at your own pace.",
+    "duration": "9 hours",
+    "meeting_point": "Hotel pickup — pickup and drop-off at your accommodation in Lisbon",
     "meeting_point_maps_url": "",
-    "highlights": [],
-    "inclusions": [],
-    "exclusions": [],
-    "what_to_bring": [],
+    "highlights": [
+      "Private tour — just your group",
+      "Visit Pena Palace and Quinta da Regaleira",
+      "See Cabo da Roca — Europe's westernmost point",
+      "Explore the charming coastal town of Cascais"
+    ],
+    "inclusions": [
+      "Pickup and drop-off at hotel/accommodation",
+      "Tickets included",
+      "Guided visits",
+      "Professional guide",
+      "Bottled water",
+      "Coffee and local pastries"
+    ],
+    "exclusions": [
+      "Lunch",
+      "Personal expenses"
+    ],
+    "what_to_bring": [
+      "Comfortable walking shoes",
+      "Camera",
+      "Sunscreen and hat (summer)"
+    ],
     "languages": [
       "en",
       "pt"
