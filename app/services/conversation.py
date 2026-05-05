@@ -203,6 +203,7 @@ async def get_conversation_status(session_token: str) -> dict | None:
             "state": conv.get("state"),
             "booking_id": conv.get("booking_id"),
             "converted": conv.get("converted"),
+            "context": conv.get("context", {}),
         }
 
     try:

@@ -4,14 +4,11 @@ Stripe webhook handler — payment → OCTO fulfillment.
 Each operator's Stripe connected account sends webhooks to /api/stripe-webhook/{operator_id}.
 The operator_id in the URL determines which webhook signing secret to use.
 Returns 200 immediately after spawning a daemon thread for booking execution.
-Idempotency enforced via in-memory lock.
+Idempotency enforced via SQLite pending_bookings table (survives restarts).
 
 Stripe Connect: webhooks from connected accounts include a Stripe-Account header.
 We use the platform secret key for all API calls, with stripe_account for the operator.
 """
-
-import threading
-import time
 
 import stripe
 from fastapi import APIRouter, Request
@@ -20,14 +17,9 @@ from fastapi.responses import JSONResponse
 from app.config import get_operator, STRIPE_PLATFORM_SECRET_KEY
 from app.services.booking import execute_booking_async
 from app.services.analytics_store import record_event
+from app.services.database import db_insert_pending_booking
 
 router = APIRouter()
-
-# In-memory idempotency: prevent concurrent duplicate processing
-# Stores {session_id: timestamp} with TTL-based cleanup
-_webhook_lock = threading.Lock()
-_webhook_in_flight: dict[str, float] = {}
-_WEBHOOK_TTL = 600  # 10 minutes
 
 
 @router.post("/api/stripe-webhook/{operator_id}")
@@ -56,17 +48,6 @@ async def stripe_webhook(operator_id: str, request: Request):
         session_id = session.get("id", "")
         metadata = session.get("metadata", {})
 
-        # Idempotency check with TTL cleanup
-        with _webhook_lock:
-            now = time.time()
-            stale = [k for k, t in _webhook_in_flight.items() if now - t > _WEBHOOK_TTL]
-            for k in stale:
-                del _webhook_in_flight[k]
-
-            if session_id in _webhook_in_flight:
-                return JSONResponse({"status": "ok", "note": "already_processing"})
-            _webhook_in_flight[session_id] = now
-
         payment_intent = session.get("payment_intent", "")
         amount_total = session.get("amount_total", 0)
         session_token = metadata.get("session_token", "")
@@ -82,11 +63,34 @@ async def stripe_webhook(operator_id: str, request: Request):
 
         conversation_id = conv_status["id"] if conv_status else None
 
+        # SQLite idempotency: insert pending booking, skip if already exists
+        booking_data = {
+            "operator_id": operator_id,
+            "conversation_id": conversation_id or "",
+            "payment_intent_id": payment_intent,
+            "product_id": metadata.get("product_id", ""),
+            "option_id": metadata.get("option_id", ""),
+            "availability_id": metadata.get("availability_id", ""),
+            "unit_id": metadata.get("unit_id", ""),
+            "quantity": int(metadata.get("quantity", 1)),
+            "customer_name": metadata.get("customer_name", ""),
+            "customer_email": metadata.get("customer_email", session.get("customer_email", "")),
+            "customer_phone": metadata.get("customer_phone", ""),
+            "start_time": metadata.get("start_time", ""),
+            "amount_cents": amount_total,
+        }
+
+        is_new = db_insert_pending_booking(session_id, booking_data)
+        if not is_new:
+            print(f"[WEBHOOK] Duplicate webhook for session {session_id} — skipping")
+            return JSONResponse({"status": "ok", "note": "already_processing"})
+
         # Spawn async fulfillment
         execute_booking_async(
             operator=operator,
             conversation_id=conversation_id or "",
             payment_intent_id=payment_intent,
+            stripe_session_id=session_id,
             product_id=metadata.get("product_id", ""),
             option_id=metadata.get("option_id", ""),
             availability_id=metadata.get("availability_id", ""),

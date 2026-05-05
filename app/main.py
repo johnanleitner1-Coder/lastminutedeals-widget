@@ -129,10 +129,11 @@ async def serve_widget_js(request: Request, op: str = ""):
 # ── Booking confirmation page (mobile Stripe redirect) ───────────────────────
 
 @app.get("/booking/confirmed")
-async def booking_confirmed(request: Request, session_id: str = ""):
+async def booking_confirmed(request: Request, session_id: str = "", token: str = ""):
     return TEMPLATES.TemplateResponse("confirmed.html", {
         "request": request,
         "session_id": session_id,
+        "token": token,
     })
 
 

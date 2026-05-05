@@ -72,6 +72,26 @@ def init_db() -> None:
             ON widget_events(operator_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_events_conversation
             ON widget_events(conversation_id);
+
+        CREATE TABLE IF NOT EXISTS pending_bookings (
+            stripe_session_id TEXT PRIMARY KEY,
+            operator_id TEXT NOT NULL,
+            conversation_id TEXT,
+            payment_intent_id TEXT,
+            product_id TEXT,
+            option_id TEXT,
+            availability_id TEXT,
+            unit_id TEXT,
+            quantity INTEGER,
+            customer_name TEXT,
+            customer_email TEXT,
+            customer_phone TEXT,
+            start_time TEXT,
+            amount_cents INTEGER,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            completed_at TEXT
+        );
     """)
     conn.commit()
 
@@ -181,15 +201,22 @@ def db_get_conversation_status(session_token: str) -> dict | None:
     """Get conversation status for widget polling."""
     conn = _get_conn()
     row = conn.execute(
-        "SELECT id, state, booking_id, converted FROM widget_conversations WHERE session_token=? LIMIT 1",
+        "SELECT id, state, booking_id, converted, context FROM widget_conversations WHERE session_token=? LIMIT 1",
         (session_token,),
     ).fetchone()
     if row:
+        ctx = row["context"] or "{}"
+        if isinstance(ctx, str):
+            try:
+                ctx = json.loads(ctx)
+            except (json.JSONDecodeError, TypeError):
+                ctx = {}
         return {
             "id": row["id"],
             "state": row["state"],
             "booking_id": row["booking_id"],
             "converted": bool(row["converted"]),
+            "context": ctx,
         }
     return None
 
@@ -281,6 +308,61 @@ def db_analytics_data(operator_id: str, since: str) -> dict:
             for r in recent_bookings
         ],
     }
+
+
+# ── Pending bookings (idempotency + crash recovery) ─────────────────────
+
+
+def db_insert_pending_booking(stripe_session_id: str, data: dict) -> bool:
+    """Insert a pending booking. Returns False if already exists (idempotency)."""
+    conn = _get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO pending_bookings
+               (stripe_session_id, operator_id, conversation_id, payment_intent_id,
+                product_id, option_id, availability_id, unit_id, quantity,
+                customer_name, customer_email, customer_phone, start_time,
+                amount_cents, status, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)""",
+            (
+                stripe_session_id, data.get("operator_id", ""),
+                data.get("conversation_id", ""), data.get("payment_intent_id", ""),
+                data.get("product_id", ""), data.get("option_id", ""),
+                data.get("availability_id", ""), data.get("unit_id", ""),
+                data.get("quantity", 1),
+                data.get("customer_name", ""), data.get("customer_email", ""),
+                data.get("customer_phone", ""), data.get("start_time", ""),
+                data.get("amount_cents", 0),
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+
+
+def db_complete_pending_booking(stripe_session_id: str, status: str) -> None:
+    """Mark a pending booking as completed or failed."""
+    conn = _get_conn()
+    conn.execute(
+        "UPDATE pending_bookings SET status=?, completed_at=? WHERE stripe_session_id=?",
+        (status, datetime.now(timezone.utc).isoformat(), stripe_session_id),
+    )
+    conn.commit()
+
+
+def db_get_stale_pending_bookings(max_age_seconds: int = 600) -> list[dict]:
+    """Find pending bookings older than max_age_seconds that never completed."""
+    conn = _get_conn()
+    cutoff = datetime.now(timezone.utc).isoformat()
+    rows = conn.execute(
+        """SELECT * FROM pending_bookings
+           WHERE status='pending'
+           AND created_at < datetime(?, '-' || ? || ' seconds')""",
+        (cutoff, max_age_seconds),
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────

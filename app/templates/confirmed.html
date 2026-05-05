@@ -102,22 +102,28 @@
                 <strong id="ref-id"></strong>
                 <span>Your booking reference</span>
             </div>
-            <p>A confirmation email has been sent to your inbox.</p>
-            <p>You can also check your booking details in the chat window.</p>
+            <p>You can check your booking details in the chat window.</p>
+            <a href="javascript:window.close()" class="close-btn">Close</a>
+        </div>
+        <div id="failed" style="display:none;">
+            <div class="icon">⚠️</div>
+            <h1>Booking Could Not Be Completed</h1>
+            <p id="fail-reason">The tour may no longer be available. Your payment has been fully refunded.</p>
+            <p>You can return to the chat to try a different time or tour.</p>
             <a href="javascript:window.close()" class="close-btn">Close</a>
         </div>
         <div id="error" style="display:none;">
             <div class="icon">⚠️</div>
             <h1>Processing</h1>
-            <p>Your payment was received. We're finalizing your booking — you'll receive a confirmation email shortly.</p>
-            <p>If you don't hear from us within 15 minutes, please contact the tour operator.</p>
+            <p>Your payment was received. We're finalizing your booking.</p>
+            <p>If you don't see confirmation within 15 minutes, please contact the tour operator.</p>
             <a href="javascript:window.close()" class="close-btn">Close</a>
         </div>
     </div>
     <script>
         (function() {
-            var sessionId = {{ session_id | tojson }};
-            if (!sessionId) {
+            var token = {{ token | tojson }};
+            if (!token) {
                 document.getElementById("error").style.display = "block";
                 return;
             }
@@ -128,13 +134,17 @@
 
             function poll() {
                 attempts++;
-                fetch("/api/conversation/" + sessionId + "/status")
+                fetch("/api/conversation/" + token + "/status")
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         if (data.state === "confirmed" && data.booking_id) {
                             document.getElementById("confirming").style.display = "none";
                             document.getElementById("confirmed").style.display = "block";
                             document.getElementById("ref-id").textContent = data.booking_id;
+                        } else if (data.state === "checkout" && data.context && data.context.error) {
+                            document.getElementById("confirming").style.display = "none";
+                            document.getElementById("fail-reason").textContent = data.context.error;
+                            document.getElementById("failed").style.display = "block";
                         } else if (attempts < maxAttempts) {
                             setTimeout(poll, 3000);
                         } else {

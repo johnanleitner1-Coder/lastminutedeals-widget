@@ -45,7 +45,7 @@ def create_checkout_session(
         mode="payment",
         payment_intent_data={"capture_method": "manual"},
         customer_email=customer_email,
-        success_url=f"{WIDGET_BASE_URL}/booking/confirmed?session_id={{CHECKOUT_SESSION_ID}}",
+        success_url=f"{WIDGET_BASE_URL}/booking/confirmed?session_id={{CHECKOUT_SESSION_ID}}&token={metadata.get('session_token', '')}",
         cancel_url=f"{WIDGET_BASE_URL}/booking/cancelled",
         metadata={
             **metadata,

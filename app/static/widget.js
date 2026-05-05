@@ -252,6 +252,7 @@
                 customer_email: checkoutData.customer_email,
                 customer_phone: checkoutData.customer_phone || '',
                 start_time: checkoutData.start_time || '',
+                pickup_location: checkoutData.pickup_location || '',
             }),
         })
         .then(function(r) { return r.json(); })
@@ -302,6 +303,9 @@
                     if (data.state === 'confirmed') {
                         clearInterval(pollTimer);
                         addMessage('system', '\u2705 Booking confirmed! Reference: ' + (data.booking_id || ''));
+                    } else if (data.state === 'checkout' && data.context && data.context.error) {
+                        clearInterval(pollTimer);
+                        addMessage('system', '\u26a0\ufe0f ' + data.context.error);
                     }
                 })
                 .catch(function() {});
