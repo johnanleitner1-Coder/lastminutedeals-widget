@@ -93,6 +93,7 @@ TOOLS = [
                     "customer_email": {"type": "string"},
                     "customer_phone": {"type": "string"},
                     "start_time": {"type": "string", "description": "Start time of the selected slot"},
+                    "pickup_location": {"type": "string", "description": "Hotel or accommodation name/address for tours with hotel pickup"},
                 },
                 "required": [
                     "product_id", "option_id", "availability_id", "unit_id",
@@ -155,7 +156,7 @@ ONCE you know the party size, ALWAYS include prices when listing available tours
 4. If a customer asks about a specific tour that is not in the list above, say "That tour isn't in our catalog. Here's what we offer:" and list the available tours.
 5. Tours listed under "OTHER TOURS (available by contacting our team)" are real tours we offer, but they can only be booked by speaking with our team. If a customer asks about one of these tours, acknowledge it exists, say it requires personalized coordination, and use escalate_to_human to connect them with the team. Do NOT check availability or attempt checkout for these tours.
 6. You can answer general conversational questions (greetings, "can you help me", "are you there", etc.) naturally. Only use escalate_to_human when the customer asks a SPECIFIC question about tour details that aren't in the data above (e.g., dietary requirements, wheelchair access, custom itineraries), when they ask about a tour that requires human coordination, or when they explicitly ask to speak with a person.
-7. Before checkout, collect: full name, email, phone number, party size. All four are required.
+7. Before checkout, collect: full name, email, phone number, party size. All four are required. For tours that include hotel pickup (meeting point says "Hotel pickup"), you MUST also collect the customer's hotel or accommodation name and address BEFORE initiating checkout. Do not proceed to payment until you have the pickup location.
 8. Before initiating payment, show a clear summary: tour name, date/time, party size, and total price.
 9. Show cancellation policy BEFORE payment, not after.
 10. Respond in the customer's language (detect from their messages). Default to English.
@@ -375,6 +376,7 @@ async def _execute_tool(operator: OperatorConfig, tool_name: str, tool_input: di
             "customer_email": tool_input["customer_email"],
             "customer_phone": tool_input.get("customer_phone", ""),
             "start_time": tool_input.get("start_time", ""),
+            "pickup_location": tool_input.get("pickup_location", ""),
         }
 
     elif tool_name == "escalate_to_human":

@@ -21,6 +21,7 @@ class CheckoutRequest(BaseModel):
     customer_email: str = Field(..., max_length=200)
     customer_phone: str = Field(..., max_length=50)
     start_time: str | None = None
+    pickup_location: str | None = None
 
 
 class WhatsAppWebhookPayload(BaseModel):

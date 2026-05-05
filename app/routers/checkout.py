@@ -87,6 +87,7 @@ async def create_checkout(req: CheckoutRequest):
                 "customer_phone": req.customer_phone,
                 "session_token": req.session_token,
                 "start_time": req.start_time or "",
+                "pickup_location": req.pickup_location or "",
             },
         )
     except Exception as e:
