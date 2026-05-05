@@ -1,5 +1,6 @@
 [
   {
+    "bookable_online": false,
     "octo_product_id": "1130322",
     "display_name": "Lisbon Private Half-Day City Tour – Belém, Alfama & Pastel de Nata ",
     "short_description": "Description pending — Eduardo to provide",
@@ -19,6 +20,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": false,
     "octo_product_id": "1175381",
     "display_name": "Porto to Lisbon Private Transfer With Sightseeing Stops",
     "short_description": "Description pending — Eduardo to provide",
@@ -38,6 +40,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": false,
     "octo_product_id": "1130326",
     "display_name": "Lisbon Private Full-Day City Tour with Belém, Alfama & Pastel de Nata",
     "short_description": "Description pending — Eduardo to provide",
@@ -57,6 +60,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": true,
     "octo_product_id": "869253",
     "display_name": "Sintra & Cascais Small-Group Day Tour Pena Palace, Regaleira, Cabo da Roca",
     "short_description": "Full-day small group tour combining Sintra's palaces with the stunning coastline of Cascais and Cabo da Roca, Europe's westernmost point.",
@@ -95,6 +99,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": true,
     "octo_product_id": "869252",
     "display_name": "Sintra Half-Day Small Group Tour with Pena Palace Tickets Included",
     "short_description": "Half-day small group tour to Sintra with Pena Palace tickets included. Explore the fairytale palaces and gardens of Portugal's most enchanting town.",
@@ -132,6 +137,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": false,
     "octo_product_id": "869255",
     "display_name": "Arrábida & Sesimbra Private Day Trip from Lisbon – Wine Tasting & Secret Beaches",
     "short_description": "Description pending — Eduardo to provide",
@@ -151,6 +157,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": false,
     "octo_product_id": "869254",
     "display_name": "Sintra Private Tour with Pena Palace & Moorish Castle Tickets",
     "short_description": "Description pending — Eduardo to provide",
@@ -170,6 +177,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": false,
     "octo_product_id": "869249",
     "display_name": "Lisbon to Porto Private Transfer With Sightseeing Stops",
     "short_description": "Description pending — Eduardo to provide",
@@ -189,6 +197,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": true,
     "octo_product_id": "869248",
     "display_name": "Fátima, Nazaré & Óbidos Private Day Trip from Lisbon",
     "short_description": "Private full-day tour to three of Portugal's most iconic destinations: the pilgrimage site of Fátima, the giant waves of Nazaré, and the medieval walled town of Óbidos.",
@@ -227,6 +236,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": true,
     "octo_product_id": "869251",
     "display_name": "Sintra & Cascais Private Day Trip: Pena Palace, Regaleira, Cabo da Roca",
     "short_description": "Private full-day tour to Sintra and Cascais. Visit Pena Palace, Quinta da Regaleira, and the dramatic cliffs of Cabo da Roca at your own pace.",
@@ -265,6 +275,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": false,
     "octo_product_id": "869250",
     "display_name": "Évora & Alentejo Private Experience from Lisbon – Wine, Roman History & Countryside",
     "short_description": "Description pending — Eduardo to provide",
@@ -284,6 +295,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": false,
     "octo_product_id": "926078",
     "display_name": "Nazaré Big Wave Experience from Lisbon - Private Tour to Portugal’s Giant Waves",
     "short_description": "Description pending — Eduardo to provide",
@@ -303,6 +315,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": false,
     "octo_product_id": "920671",
     "display_name": "Fátima Private Pilgrimage from Lisbon – Spiritual Day Trip to the Sanctuary",
     "short_description": "Description pending — Eduardo to provide",
@@ -322,6 +335,7 @@
     "cancellation_summary": "Free cancellation up to 24h before"
   },
   {
+    "bookable_online": false,
     "octo_product_id": "869246",
     "display_name": "Sintra Free Walking Tour: Fairytale Village, Palaces & Legends",
     "short_description": "Description pending — Eduardo to provide",

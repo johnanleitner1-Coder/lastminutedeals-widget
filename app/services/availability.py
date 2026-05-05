@@ -98,6 +98,7 @@ def get_products_with_catalog(operator: OperatorConfig) -> list[dict]:
                 "max_group_size": cat_entry.get("max_group_size"),
                 "images": cat_entry.get("images", []),
                 "cancellation_summary": cat_entry.get("cancellation_summary", ""),
+                "bookable_online": cat_entry.get("bookable_online", True),
                 "has_catalog_entry": True,
             })
         else:
@@ -191,7 +192,7 @@ def search_all_availability(
     Returns a list of tours with their available slots.
     time_of_day: optional filter — "morning", "afternoon", or "evening".
     """
-    products = get_products_with_catalog(operator)
+    products = [p for p in get_products_with_catalog(operator) if p.get("bookable_online", True)]
 
     def _check_one(product: dict) -> dict:
         if not product.get("unit_types"):
@@ -256,43 +257,49 @@ def build_ai_product_context(operator: OperatorConfig, availability_by_product: 
     """
     Build the structured product context block for the AI system prompt.
     Merges static catalog content with live availability data.
+    Separates bookable_online tours (full flow) from human-only tours.
     """
     products = get_products_with_catalog(operator)
-    lines = []
+    bookable_lines = []
+    human_only_names = []
 
     for prod in products:
         if not prod["has_catalog_entry"]:
             continue  # Don't show products without catalog content
 
-        lines.append("---")
-        lines.append(f"TOUR: {prod['display_name']}")
+        if not prod.get("bookable_online", True):
+            human_only_names.append(prod["display_name"])
+            continue
+
+        bookable_lines.append("---")
+        bookable_lines.append(f"TOUR: {prod['display_name']}")
         if prod["short_description"] and "pending" not in prod["short_description"].lower():
-            lines.append(f"DESCRIPTION: {prod['short_description']}")
+            bookable_lines.append(f"DESCRIPTION: {prod['short_description']}")
         if prod["duration"]:
-            lines.append(f"DURATION: {prod['duration']}")
+            bookable_lines.append(f"DURATION: {prod['duration']}")
         if prod["meeting_point"]:
             mp = prod["meeting_point"]
             if prod["meeting_point_maps_url"]:
                 mp += f" ({prod['meeting_point_maps_url']})"
-            lines.append(f"MEETING POINT: {mp}")
+            bookable_lines.append(f"MEETING POINT: {mp}")
         if prod["inclusions"]:
-            lines.append(f"INCLUDES: {', '.join(prod['inclusions'])}")
+            bookable_lines.append(f"INCLUDES: {', '.join(prod['inclusions'])}")
         if prod["exclusions"]:
-            lines.append(f"EXCLUDES: {', '.join(prod['exclusions'])}")
+            bookable_lines.append(f"EXCLUDES: {', '.join(prod['exclusions'])}")
         if prod["what_to_bring"]:
-            lines.append(f"WHAT TO BRING: {', '.join(prod['what_to_bring'])}")
+            bookable_lines.append(f"WHAT TO BRING: {', '.join(prod['what_to_bring'])}")
         if prod["languages"]:
-            lines.append(f"LANGUAGES: {', '.join(prod['languages'])}")
+            bookable_lines.append(f"LANGUAGES: {', '.join(prod['languages'])}")
         if prod["max_group_size"]:
-            lines.append(f"MAX GROUP: {prod['max_group_size']} people")
+            bookable_lines.append(f"MAX GROUP: {prod['max_group_size']} people")
         if prod["cancellation_summary"]:
-            lines.append(f"CANCELLATION: {prod['cancellation_summary']}")
+            bookable_lines.append(f"CANCELLATION: {prod['cancellation_summary']}")
 
         # Live availability
         if availability_by_product and prod["octo_product_id"] in availability_by_product:
             avail_slots = availability_by_product[prod["octo_product_id"]]
             if avail_slots:
-                lines.append("AVAILABLE SLOTS (live):")
+                bookable_lines.append("AVAILABLE SLOTS (live):")
                 for s in avail_slots:
                     start = s.get("start_time", "")
                     total = s.get("total_price")
@@ -304,14 +311,22 @@ def build_ai_product_context(operator: OperatorConfig, availability_by_product: 
                         line += f" — {total:.0f} {currency} total for {qty} people"
                     if vacancies is not None:
                         line += f" ({vacancies} spots left)"
-                    lines.append(line)
+                    bookable_lines.append(line)
             else:
-                lines.append("AVAILABLE SLOTS: None currently available")
+                bookable_lines.append("AVAILABLE SLOTS: None currently available")
 
-        lines.append(f"PRODUCT_ID: {prod['octo_product_id']}")
-        lines.append(f"OPTION_ID: {prod['option_id']}")
+        bookable_lines.append(f"PRODUCT_ID: {prod['octo_product_id']}")
+        bookable_lines.append(f"OPTION_ID: {prod['option_id']}")
         if prod["unit_types"]:
-            lines.append(f"UNIT_ID: {prod['unit_types'][0]['id']}")
+            bookable_lines.append(f"UNIT_ID: {prod['unit_types'][0]['id']}")
+        bookable_lines.append("")
+
+    lines = bookable_lines
+    if human_only_names:
+        lines.append("")
+        lines.append("=== OTHER TOURS (available by contacting our team) ===")
+        for name in human_only_names:
+            lines.append(f"- {name}")
         lines.append("")
 
     return "\n".join(lines)
