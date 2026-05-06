@@ -399,6 +399,114 @@ def db_get_stale_pending_bookings(max_age_seconds: int = 600) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+# ── GDPR / data retention ─────────────────────────────────────────────────
+
+
+def db_cleanup_expired_conversations(retention_days: int = 90) -> int:
+    """
+    Delete non-booking conversations older than retention_days.
+    Conversations with converted=1 are retained (booking records kept for tax law).
+    Returns number of deleted rows.
+    """
+    conn = _get_conn()
+    cutoff = datetime.now(timezone.utc).isoformat()
+    # Delete associated events first
+    conn.execute(
+        """DELETE FROM widget_events WHERE conversation_id IN (
+            SELECT id FROM widget_conversations
+            WHERE converted=0 AND created_at < datetime(?, '-' || ? || ' days')
+        )""",
+        (cutoff, retention_days),
+    )
+    cursor = conn.execute(
+        "DELETE FROM widget_conversations WHERE converted=0 AND created_at < datetime(?, '-' || ? || ' days')",
+        (cutoff, retention_days),
+    )
+    deleted = cursor.rowcount
+    conn.commit()
+    if deleted > 0:
+        print(f"[GDPR] Cleaned up {deleted} expired conversations (>{retention_days} days, non-booking)")
+    return deleted
+
+
+def db_lookup_by_email(email: str) -> dict:
+    """Look up all data associated with an email address (GDPR access request)."""
+    conn = _get_conn()
+
+    # Search conversations where messages contain this email
+    conversations = conn.execute(
+        "SELECT * FROM widget_conversations WHERE messages LIKE ?",
+        (f"%{email}%",),
+    ).fetchall()
+
+    # Search pending bookings by customer email
+    bookings = conn.execute(
+        "SELECT * FROM pending_bookings WHERE customer_email=?",
+        (email,),
+    ).fetchall()
+
+    # Search events related to those conversations
+    conv_ids = [dict(r)["id"] for r in conversations]
+    events = []
+    for cid in conv_ids:
+        rows = conn.execute(
+            "SELECT * FROM widget_events WHERE conversation_id=?",
+            (cid,),
+        ).fetchall()
+        events.extend([dict(r) for r in rows])
+
+    return {
+        "conversations": [_row_to_dict(r) for r in conversations],
+        "bookings": [dict(r) for r in bookings],
+        "events": events,
+    }
+
+
+def db_delete_by_email(email: str) -> dict:
+    """
+    Delete all data associated with an email address (GDPR erasure request).
+    Booking records with converted=1 are retained as required by law — only
+    the personal details (messages, customer info) are scrubbed.
+    Returns summary of actions taken.
+    """
+    conn = _get_conn()
+    summary = {"conversations_deleted": 0, "conversations_scrubbed": 0, "events_deleted": 0, "bookings_scrubbed": 0}
+
+    # Find matching conversations
+    conversations = conn.execute(
+        "SELECT id, converted FROM widget_conversations WHERE messages LIKE ?",
+        (f"%{email}%",),
+    ).fetchall()
+
+    for conv in conversations:
+        conv_id = conv["id"]
+        converted = conv["converted"]
+
+        if converted:
+            # Booking conversation: scrub personal data but keep record
+            conn.execute(
+                "UPDATE widget_conversations SET messages='[]', context='{}' WHERE id=?",
+                (conv_id,),
+            )
+            summary["conversations_scrubbed"] += 1
+        else:
+            # Non-booking: delete entirely
+            conn.execute("DELETE FROM widget_events WHERE conversation_id=?", (conv_id,))
+            conn.execute("DELETE FROM widget_conversations WHERE id=?", (conv_id,))
+            summary["conversations_deleted"] += 1
+            summary["events_deleted"] += 1
+
+    # Scrub pending bookings (keep record, remove personal info)
+    cursor = conn.execute(
+        "UPDATE pending_bookings SET customer_name='[redacted]', customer_email='[redacted]', customer_phone='[redacted]' WHERE customer_email=?",
+        (email,),
+    )
+    summary["bookings_scrubbed"] = cursor.rowcount
+
+    conn.commit()
+    return summary
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 

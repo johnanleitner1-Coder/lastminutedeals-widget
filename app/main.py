@@ -27,9 +27,17 @@ TEMPLATES = Jinja2Templates(directory=str(APP_DIR / "templates"))
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: initialize SQLite database
-    from app.services.database import init_db
+    from app.services.database import init_db, db_cleanup_expired_conversations
     init_db()
     print("[STARTUP] SQLite database initialized")
+
+    # Startup: clean up expired conversations (GDPR 90-day retention)
+    try:
+        deleted = db_cleanup_expired_conversations(retention_days=90)
+        if deleted:
+            print(f"[STARTUP] GDPR cleanup: removed {deleted} expired conversations")
+    except Exception as e:
+        print(f"[STARTUP] GDPR cleanup failed: {e}")
 
     # Startup: pre-load product catalogs for all operators
     from app.services.availability import get_products_with_catalog

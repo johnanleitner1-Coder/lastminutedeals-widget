@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
 from app.config import DASHBOARD_HMAC_SECRET, get_operator
-from app.services.database import db_analytics_data
+from app.services.database import db_analytics_data, db_lookup_by_email, db_delete_by_email
 
 router = APIRouter()
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
@@ -104,4 +104,42 @@ async def analytics_data(op: str = "", token: str = "", days: int = 30):
             "avg_messages": data["avg_messages"],
             "est_hours_saved": est_hours_saved,
         },
+    })
+
+
+# ── GDPR endpoints ──────────────────────────────────────────────────────────
+
+
+@router.get("/api/gdpr/lookup")
+async def gdpr_lookup(op: str = "", token: str = "", email: str = ""):
+    """Look up all data associated with an email (GDPR access request)."""
+    if not op or not token or not _verify_token(op, token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=403)
+    if not email:
+        return JSONResponse({"error": "Email required"}, status_code=400)
+
+    data = db_lookup_by_email(email)
+    return JSONResponse({
+        "email": email,
+        "conversations": len(data["conversations"]),
+        "bookings": len(data["bookings"]),
+        "events": len(data["events"]),
+        "data": data,
+    })
+
+
+@router.post("/api/gdpr/delete")
+async def gdpr_delete(op: str = "", token: str = "", email: str = ""):
+    """Delete all data associated with an email (GDPR erasure request)."""
+    if not op or not token or not _verify_token(op, token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=403)
+    if not email:
+        return JSONResponse({"error": "Email required"}, status_code=400)
+
+    summary = db_delete_by_email(email)
+    return JSONResponse({
+        "email": email,
+        "action": "erasure_completed",
+        "summary": summary,
+        "note": "Booking records retained as required by law; personal details scrubbed.",
     })
