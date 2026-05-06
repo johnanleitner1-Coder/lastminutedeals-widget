@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
 from app.config import DASHBOARD_HMAC_SECRET, get_operator
-from app.services.database import db_analytics_data, _get_conn
+from app.services.database import db_analytics_data
 
 router = APIRouter()
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
@@ -105,24 +105,3 @@ async def analytics_data(op: str = "", token: str = "", days: int = 30):
             "est_hours_saved": est_hours_saved,
         },
     })
-
-
-@router.post("/api/admin/reset-data")
-async def reset_data(op: str = "", token: str = ""):
-    """One-time endpoint to clear test data before go-live. Remove after use."""
-    if not op or not token or not _verify_token(op, token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=403)
-
-    conn = _get_conn()
-    conn.executescript("""
-        DELETE FROM widget_conversations;
-        DELETE FROM widget_events;
-        DELETE FROM pending_bookings;
-    """)
-    conn.commit()
-
-    # Also clear in-memory conversation cache
-    from app.services.conversation import _memory
-    _memory.clear()
-
-    return JSONResponse({"status": "ok", "message": "All test data cleared"})
