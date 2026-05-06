@@ -83,6 +83,21 @@
         .badge-web { background: #dbeafe; color: #1e40af; }
         .badge-whatsapp { background: #dcfce7; color: #166534; }
         .loading { text-align: center; padding: 40px; color: #9ca3af; }
+        .section-title { font-size: 18px; font-weight: 600; margin: 32px 0 16px; color: #111827; }
+        .savings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .savings-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-left: 4px solid #10b981;
+        }
+        .savings-card .stat-value { color: #059669; }
     </style>
 </head>
 <body>
@@ -132,6 +147,18 @@
         html += channelCard("WhatsApp", "whatsapp", data.channels.whatsapp);
         html += '</div>';
 
+        // Team savings section
+        if (data.team_savings) {
+            var s = data.team_savings;
+            html += '<div class="section-title">Team Savings</div>';
+            html += '<div class="savings-grid">';
+            html += savingsCard("Fully Automated", s.fully_automated, "Bookings completed without human help");
+            html += savingsCard("After-Hours Chats", s.after_hours, "Conversations outside 9am\u20135pm");
+            html += savingsCard("Messages Handled", s.total_messages, "Avg " + s.avg_messages + " per conversation");
+            html += savingsCard("Est. Hours Saved", s.est_hours_saved, "Based on ~4 min per conversation");
+            html += '</div>';
+        }
+
         // Recent bookings table
         html += '<div class="bookings-table">';
         html += '<div class="chart-title">Recent Bookings</div>';
@@ -159,6 +186,10 @@
 
     function statCard(label, value, sub) {
         return '<div class="stat-card"><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div><div class="stat-sub">' + sub + '</div></div>';
+    }
+
+    function savingsCard(label, value, sub) {
+        return '<div class="savings-card"><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div><div class="stat-sub">' + sub + '</div></div>';
     }
 
     function channelCard(name, key, data) {

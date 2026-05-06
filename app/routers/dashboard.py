@@ -70,6 +70,8 @@ async def analytics_data(op: str = "", token: str = "", days: int = 30):
             "total_revenue_cents": 0, "web_conversations": 0,
             "whatsapp_conversations": 0, "web_bookings": 0,
             "whatsapp_bookings": 0, "total_escalations": 0,
+            "fully_automated": 0, "after_hours": 0,
+            "total_messages": 0, "avg_messages": 0,
             "recent_bookings": [],
         }
 
@@ -77,6 +79,9 @@ async def analytics_data(op: str = "", token: str = "", days: int = 30):
     total_bookings = data["total_bookings"]
     conversion_rate = (total_bookings / total_conversations * 100) if total_conversations > 0 else 0
     currency_symbol = operator.currency_symbol
+
+    # Estimate hours saved: ~4 minutes per conversation if handled by a human
+    est_hours_saved = round(data["total_conversations"] * 4 / 60, 1)
 
     return JSONResponse({
         "period_days": days,
@@ -92,4 +97,11 @@ async def analytics_data(op: str = "", token: str = "", days: int = 30):
             "whatsapp": {"conversations": data["whatsapp_conversations"], "bookings": data["whatsapp_bookings"]},
         },
         "recent_bookings": data["recent_bookings"],
+        "team_savings": {
+            "fully_automated": data["fully_automated"],
+            "after_hours": data["after_hours"],
+            "total_messages": data["total_messages"],
+            "avg_messages": data["avg_messages"],
+            "est_hours_saved": est_hours_saved,
+        },
     })

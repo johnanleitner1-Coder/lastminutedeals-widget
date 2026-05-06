@@ -289,6 +289,36 @@ def db_analytics_data(operator_id: str, since: str) -> dict:
         (operator_id, since),
     ).fetchall()
 
+    # Fully automated conversations (confirmed without human escalation)
+    fully_automated = conn.execute(
+        "SELECT COUNT(*) FROM widget_conversations WHERE operator_id=? AND converted=1 AND state='confirmed' AND created_at>=?",
+        (operator_id, since),
+    ).fetchone()[0]
+
+    # After-hours conversations (outside 09:00-17:00 Lisbon time, UTC+0/+1)
+    # Use UTC approximation: before 09:00 UTC or after 17:00 UTC
+    after_hours = conn.execute(
+        """SELECT COUNT(*) FROM widget_conversations
+           WHERE operator_id=? AND created_at>=?
+           AND (
+               CAST(strftime('%H', created_at) AS INTEGER) < 9
+               OR CAST(strftime('%H', created_at) AS INTEGER) >= 17
+           )""",
+        (operator_id, since),
+    ).fetchone()[0]
+
+    # Total messages handled by AI
+    total_messages = conn.execute(
+        "SELECT COALESCE(SUM(message_count), 0) FROM widget_conversations WHERE operator_id=? AND created_at>=?",
+        (operator_id, since),
+    ).fetchone()[0]
+
+    # Average messages per conversation
+    avg_messages = conn.execute(
+        "SELECT COALESCE(AVG(message_count), 0) FROM widget_conversations WHERE operator_id=? AND message_count>0 AND created_at>=?",
+        (operator_id, since),
+    ).fetchone()[0]
+
     return {
         "total_conversations": total_conversations,
         "total_bookings": total_bookings,
@@ -298,6 +328,10 @@ def db_analytics_data(operator_id: str, since: str) -> dict:
         "web_bookings": web_bookings,
         "whatsapp_bookings": whatsapp_bookings,
         "total_escalations": total_escalations,
+        "fully_automated": fully_automated,
+        "after_hours": after_hours,
+        "total_messages": total_messages,
+        "avg_messages": round(avg_messages, 1),
         "recent_bookings": [
             {
                 "booking_id": r["booking_id"] or "",
