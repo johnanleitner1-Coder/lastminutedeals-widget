@@ -115,7 +115,7 @@
         .typing-dot:nth-child(2) { animation-delay: 0.2s; }\
         .typing-dot:nth-child(3) { animation-delay: 0.4s; }\
         @keyframes typing { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }\
-        .privacy-note { font-size: 11px; color: #9ca3af; text-align: center; padding: 4px 16px 8px; }\
+        .privacy-note { font-size: 11px; color: #9ca3af; text-align: center; padding: 4px 16px 8px; line-height: 1.4; }\
         .privacy-note a { color: #6b7280; }\
     ';
 
@@ -138,7 +138,7 @@
             <button class="widget-close" aria-label="Close">&times;</button>\
         </div>\
         <div class="widget-messages" id="widget-messages"></div>\
-        <div class="privacy-note">By chatting, you agree to our <a href="' + API_URL + '/privacy" target="_blank">Privacy Policy</a></div>\
+        <div class="privacy-note">AI-powered assistant. <a href="' + API_URL + '/privacy" target="_blank">Privacy Policy</a></div>\
         <div class="widget-input-area">\
             <textarea class="widget-input" id="widget-input" placeholder="Ask about tours..." rows="1"></textarea>\
             <button class="widget-send" id="widget-send">Send</button>\
